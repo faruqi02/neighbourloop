@@ -18,5 +18,6 @@ web-build/
 
 # Misc
 *.bat
+!auto_run.bat
 .DS_Store
 *.log

@@ -232,3 +232,4 @@ ACTIVITIES_DB: List[ActivityItem] = [
         category="help"
     )
 ]
+

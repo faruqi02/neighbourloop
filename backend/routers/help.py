@@ -77,3 +77,4 @@ def fulfill_help(help_id: str, helper_id: str = Query("u1")):
             return h
 
     raise HTTPException(status_code=404, detail="Help request not found")
+

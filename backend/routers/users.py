@@ -25,3 +25,4 @@ def add_green_points(user_id: str, points: int):
         raise HTTPException(status_code=404, detail="User not found")
     user.greenPoints += points
     return user
+

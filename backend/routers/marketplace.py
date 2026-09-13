@@ -65,3 +65,4 @@ def create_listing(data: ListingCreate, user_id: str = Query("u1")):
     ))
     
     return new_listing
+

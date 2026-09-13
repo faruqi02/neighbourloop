@@ -47,3 +47,4 @@ export default function SuccessModal({ visible, points, title, message, onClose 
     </Modal>
   );
 }
+

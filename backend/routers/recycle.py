@@ -159,3 +159,4 @@ def record_recycle_dropoff(center_id: str, material: str, user_id: str = Query("
         "message": f"Tahniah! Anda menerima +30 Mata Hijau atas kitar semula {material}.",
         "newTotalPoints": user.greenPoints
     }
+

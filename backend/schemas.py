@@ -115,3 +115,4 @@ class ActivityItem(BaseModel):
     timestamp: str
     pointsEarned: int
     category: Literal['marketplace', 'recycle', 'help', 'donation']
+

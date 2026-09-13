@@ -104,3 +104,4 @@ export default function LocationModal({ visible, onClose }: Props) {
     </Modal>
   );
 }
+

@@ -38,3 +38,4 @@ def get_user(user_id: str):
     if user_id in USERS_DB:
         return USERS_DB[user_id]
     raise HTTPException(status_code=404, detail="User not found")
+

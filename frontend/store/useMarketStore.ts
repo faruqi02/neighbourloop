@@ -4,16 +4,31 @@ import { mockListings } from '../services/mockData';
 
 interface MarketState {
   listings: Listing[];
-  addListing: (listing: Listing) => void;
-  filterByCategory: (category: string) => Listing[];
+  addListing: (listing: Omit<Listing, 'id' | 'createdAt'>) => void;
+  filterListings: (category: string, search: string, maxDistance?: number) => Listing[];
 }
 
 export const useMarketStore = create<MarketState>((set, get) => ({
   listings: mockListings,
-  addListing: (listing) => set((state) => ({ listings: [listing, ...state.listings] })),
-  filterByCategory: (category) => {
+  
+  addListing: (listingData) => set((state) => {
+    const newListing: Listing = {
+      ...listingData,
+      id: `l_${Date.now()}`,
+      createdAt: 'Baru sahaja',
+    };
+    return { listings: [newListing, ...state.listings] };
+  }),
+
+  filterListings: (category, search, maxDistance) => {
     const { listings } = get();
-    if (category === 'Semua') return listings;
-    return listings.filter(l => l.category === category);
-  }
+    return listings.filter((item) => {
+      const matchCat = category === 'Semua' || item.category === category;
+      const matchSearch = !search || 
+        item.title.toLowerCase().includes(search.toLowerCase()) ||
+        item.description.toLowerCase().includes(search.toLowerCase());
+      const matchDist = maxDistance ? item.distance <= maxDistance : true;
+      return matchCat && matchSearch && matchDist;
+    });
+  },
 }));

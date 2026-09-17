@@ -51,3 +51,4 @@ echo  - Untuk menghentikan servis, tekan Ctrl + C dalam tetingkap masing-masing.
 echo.
 echo Tetingkap launcher ini boleh ditutup pada bila-bila masa.
 pause
+

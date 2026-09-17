@@ -12,33 +12,44 @@ import { useUserStore } from '../../store/useUserStore';
 import { useMarketStore } from '../../store/useMarketStore';
 import { useHelpStore } from '../../store/useHelpStore';
 import { useRecycleStore } from '../../store/useRecycleStore';
+import { useChatStore } from '../../store/useChatStore';
 import { 
-  Leaf, 
   Settings, 
   ChevronRight, 
   ShoppingCart, 
-  Recycle, 
   HeartHandshake, 
-  Award, 
   Users, 
   MapPin, 
   Check, 
-  Gift 
+  MessageSquare, 
+  Shield, 
+  Phone, 
+  Send, 
+  UserCheck 
 } from 'lucide-react-native';
 import LocationModal from '../../components/LocationModal';
+import EditContactModal from '../../components/EditContactModal';
+import ChatHistoryModal from '../../components/ChatHistoryModal';
+import AdminDashboardModal from '../../components/AdminDashboardModal';
+
+const recycleIcon = require('../../images/recycle_icon.png');
 
 export default function ProfileScreen() {
   const { currentUser, allUsers, switchUserById } = useUserStore();
   const { listings } = useMarketStore();
   const { requests } = useHelpStore();
   const { donations } = useRecycleStore();
+  const { conversations } = useChatStore();
 
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [personaModalVisible, setPersonaModalVisible] = useState(false);
-  const [rewardModalVisible, setRewardModalVisible] = useState(false);
+  const [editContactVisible, setEditContactVisible] = useState(false);
+  const [chatHistoryVisible, setChatHistoryVisible] = useState(false);
+  const [adminDashboardVisible, setAdminDashboardVisible] = useState(false);
 
   const myListingsCount = listings.filter((l) => l.sellerId === currentUser.id).length;
   const myHelpCount = requests.filter((r) => r.requesterId === currentUser.id || r.fulfilledBy === currentUser.name).length;
+  const myDonationCount = donations.filter((d) => d.donorId === currentUser.id).length;
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -50,51 +61,59 @@ export default function ProfileScreen() {
           className="flex-row items-center bg-green-50 px-3 py-1.5 rounded-full border border-green-200"
         >
           <Users size={14} color="#16a34a" />
-          <Text className="text-xs font-bold text-green-800 ml-1">Tukar Persona Demo</Text>
+          <Text className="text-xs font-bold text-green-800 ml-1">Tukar Pengguna (Viva)</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView className="flex-1 bg-gray-50" showsVerticalScrollIndicator={false}>
-        {/* Profile Card */}
+        {/* Profile Info Card */}
         <View className="bg-white p-6 items-center border-b border-gray-100 mb-3">
           <Image
             source={{ uri: currentUser.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' }}
-            className="w-24 h-24 rounded-full bg-gray-200 mb-3 border-4 border-green-500"
+            className="w-24 h-24 rounded-full bg-gray-200 mb-3 border-4 border-green-600"
           />
-          <Text className="text-2xl font-black text-gray-900">{currentUser.name}</Text>
+          <View className="flex-row items-center">
+            <Text className="text-2xl font-black text-gray-900">{currentUser.name}</Text>
+            {currentUser.role === 'Admin' ? (
+              <View className="ml-2 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
+                <Text className="text-[10px] text-amber-900 font-bold">Admin/SV</Text>
+              </View>
+            ) : null}
+          </View>
           <Text className="text-gray-400 text-xs mt-0.5">{currentUser.email}</Text>
 
+          {/* Location Badge */}
           <TouchableOpacity
             onPress={() => setLocationModalVisible(true)}
-            className="flex-row items-center mt-2.5 bg-gray-100 px-3.5 py-1.5 rounded-full"
+            className="flex-row items-center mt-2 bg-gray-100 px-3.5 py-1.5 rounded-full border border-gray-200"
           >
             <MapPin size={14} color="#16a34a" />
             <Text className="text-gray-700 text-xs font-semibold ml-1">{currentUser.location}</Text>
             <ChevronRight size={12} color="#9ca3af" className="ml-1" />
           </TouchableOpacity>
 
-          {/* Green Points Badge */}
-          <TouchableOpacity 
-            onPress={() => setRewardModalVisible(true)}
-            className="bg-green-100 mt-4 px-5 py-2.5 rounded-full flex-row items-center border border-green-200 shadow-sm"
+          {/* Contact Details Quick Preview Card */}
+          <TouchableOpacity
+            onPress={() => setEditContactVisible(true)}
+            className="mt-3 bg-green-50/80 px-4 py-2 rounded-2xl border border-green-200 flex-row items-center"
           >
-            <Leaf size={18} color="#16a34a" />
-            <Text className="text-green-800 font-black ml-2 text-sm">
-              {currentUser.greenPoints} Mata Hijau (Tebus Baucar)
+            <Phone size={14} color="#16a34a" />
+            <Text className="text-xs font-bold text-green-800 ml-1.5">
+              {currentUser.phone ? `WhatsApp: ${currentUser.phone}` : 'Tetapkan No. WhatsApp / Telefon'}
             </Text>
-            <ChevronRight size={14} color="#16a34a" className="ml-1" />
+            <ChevronRight size={12} color="#16a34a" className="ml-1" />
           </TouchableOpacity>
         </View>
 
-        {/* Real-time Stats Grid */}
+        {/* Real-time Activity Stats Grid */}
         <View className="bg-white p-4 flex-row justify-between border-b border-gray-100 mb-3 mx-4 rounded-2xl shadow-sm">
           <View className="items-center flex-1 border-r border-gray-100">
             <Text className="text-2xl font-black text-blue-600">{myListingsCount}</Text>
             <Text className="text-gray-500 text-[11px] font-semibold mt-0.5">Iklan Jualan</Text>
           </View>
           <View className="items-center flex-1 border-r border-gray-100">
-            <Text className="text-2xl font-black text-green-600">{donations.length + 2}</Text>
-            <Text className="text-gray-500 text-[11px] font-semibold mt-0.5">Kitar & Derma</Text>
+            <Text className="text-2xl font-black text-green-600">{myDonationCount + 1}</Text>
+            <Text className="text-gray-500 text-[11px] font-semibold mt-0.5">Barang Derma</Text>
           </View>
           <View className="items-center flex-1">
             <Text className="text-2xl font-black text-purple-600">{myHelpCount}</Text>
@@ -104,44 +123,89 @@ export default function ProfileScreen() {
 
         {/* Menu Navigation Items */}
         <View className="bg-white mx-4 rounded-2xl border border-gray-100 overflow-hidden mb-6 shadow-sm">
+          {/* Sejarah Mesej / Chat History (Requirement 6) */}
           <TouchableOpacity 
-            onPress={() => setRewardModalVisible(true)}
+            onPress={() => setChatHistoryVisible(true)}
             className="flex-row items-center p-4 border-b border-gray-100"
           >
-            <View className="w-10 h-10 bg-yellow-50 rounded-xl items-center justify-center">
-              <Gift size={20} color="#ca8a04" />
+            <View className="w-10 h-10 bg-green-50 rounded-xl items-center justify-center border border-green-100">
+              <MessageSquare size={20} color="#16a34a" />
             </View>
             <View className="flex-1 ml-3.5">
-              <Text className="text-gray-900 text-sm font-bold">Katalog Ganjaran Lestari</Text>
-              <Text className="text-gray-400 text-xs">Tebus baucar pasar raya & kedai eco</Text>
+              <View className="flex-row items-center justify-between mr-1">
+                <Text className="text-gray-900 text-sm font-bold">Sejarah Mesej (Chat History)</Text>
+                {conversations.length > 0 && (
+                  <View className="bg-green-600 px-2 py-0.5 rounded-full">
+                    <Text className="text-white text-[10px] font-bold">{conversations.length}</Text>
+                  </View>
+                )}
+              </View>
+              <Text className="text-gray-400 text-xs mt-0.5">Lihat perbualan aktif dengan jiran</Text>
             </View>
             <ChevronRight size={18} color="#9ca3af" />
           </TouchableOpacity>
 
+          {/* Maklumat Perhubungan / Contact Details (Requirement 5) */}
+          <TouchableOpacity 
+            onPress={() => setEditContactVisible(true)}
+            className="flex-row items-center p-4 border-b border-gray-100"
+          >
+            <View className="w-10 h-10 bg-blue-50 rounded-xl items-center justify-center border border-blue-100">
+              <Phone size={20} color="#2563eb" />
+            </View>
+            <View className="flex-1 ml-3.5">
+              <Text className="text-gray-900 text-sm font-bold">Maklumat Perhubungan Pengguna</Text>
+              <Text className="text-gray-400 text-xs mt-0.5">Ubah No. Telefon, WhatsApp, Telegram & Nota</Text>
+            </View>
+            <ChevronRight size={18} color="#9ca3af" />
+          </TouchableOpacity>
+
+          {/* Tetapan Komuniti & Radius */}
           <TouchableOpacity 
             onPress={() => setLocationModalVisible(true)}
             className="flex-row items-center p-4 border-b border-gray-100"
           >
-            <View className="w-10 h-10 bg-green-50 rounded-xl items-center justify-center">
-              <MapPin size={20} color="#16a34a" />
+            <View className="w-10 h-10 bg-purple-50 rounded-xl items-center justify-center border border-purple-100">
+              <MapPin size={20} color="#9333ea" />
             </View>
             <View className="flex-1 ml-3.5">
-              <Text className="text-gray-900 text-sm font-bold">Tetapan Komuniti & Radius</Text>
-              <Text className="text-gray-400 text-xs">Ubah kawasan kejiranan atau jarak carian</Text>
+              <Text className="text-gray-900 text-sm font-bold">Kawasan Kejiranan & Radius</Text>
+              <Text className="text-gray-400 text-xs mt-0.5">Tukar zon komuniti atau jarak carian</Text>
             </View>
             <ChevronRight size={18} color="#9ca3af" />
           </TouchableOpacity>
 
+          {/* Supervisor & Admin Dashboard (Requirement 9) */}
+          <TouchableOpacity 
+            onPress={() => setAdminDashboardVisible(true)}
+            className="flex-row items-center p-4 bg-amber-50/50 border-b border-gray-100"
+          >
+            <View className="w-10 h-10 bg-amber-100 rounded-xl items-center justify-center border border-amber-300">
+              <Shield size={20} color="#b45309" />
+            </View>
+            <View className="flex-1 ml-3.5">
+              <View className="flex-row items-center">
+                <Text className="text-gray-900 text-sm font-bold">Dashboard Admin & Data Pengguna</Text>
+                <View className="bg-amber-500 px-1.5 py-0.5 rounded ml-1.5">
+                  <Text className="text-slate-950 font-black text-[9px]">SV</Text>
+                </View>
+              </View>
+              <Text className="text-gray-500 text-xs mt-0.5">Semakan SV, data pengguna & statistik FYP</Text>
+            </View>
+            <ChevronRight size={18} color="#9ca3af" />
+          </TouchableOpacity>
+
+          {/* Switch User Persona for Viva */}
           <TouchableOpacity 
             onPress={() => setPersonaModalVisible(true)}
             className="flex-row items-center p-4"
           >
-            <View className="w-10 h-10 bg-blue-50 rounded-xl items-center justify-center">
-              <Users size={20} color="#2563eb" />
+            <View className="w-10 h-10 bg-gray-100 rounded-xl items-center justify-center border border-gray-200">
+              <Users size={20} color="#4b5563" />
             </View>
             <View className="flex-1 ml-3.5">
-              <Text className="text-gray-900 text-sm font-bold">Tukar Pengguna Demo (FYP Viva)</Text>
-              <Text className="text-gray-400 text-xs">Simulasi peranan Aisyah, Abu, atau Siti</Text>
+              <Text className="text-gray-900 text-sm font-bold">Tukar Pengguna Demo (Simulasi Viva)</Text>
+              <Text className="text-gray-400 text-xs mt-0.5">Tukar peranan Aisyah, Abu Bakar, Siti, atau Admin</Text>
             </View>
             <ChevronRight size={18} color="#9ca3af" />
           </TouchableOpacity>
@@ -153,34 +217,43 @@ export default function ProfileScreen() {
       {/* Demo Persona Switcher Modal */}
       <Modal visible={personaModalVisible} transparent animationType="slide">
         <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white rounded-t-3xl p-6">
-            <Text className="text-xl font-bold text-gray-900 mb-1">Tukar Pengguna Demo</Text>
+          <View className="bg-white rounded-t-3xl p-6 max-h-[85%]">
+            <Text className="text-xl font-bold text-gray-900 mb-1">Tukar Pengguna Demo (FYP Viva)</Text>
             <Text className="text-gray-500 text-xs mb-4">
-              Pilih profil untuk menguji interaksi antara jiran yang berbeza dalam aplikasi.
+              Pilih akaun berbeza untuk menguji interaksi dan simulasi chat sesama jiran.
             </Text>
 
-            {allUsers.map((u) => (
-              <TouchableOpacity
-                key={u.id}
-                onPress={() => {
-                  switchUserById(u.id);
-                  setPersonaModalVisible(false);
-                }}
-                className={`flex-row items-center p-3.5 rounded-2xl mb-2.5 border ${
-                  currentUser.id === u.id
-                    ? 'bg-green-50 border-green-600'
-                    : 'bg-gray-50 border-gray-200'
-                }`}
-              >
-                <Image source={{ uri: u.avatarUrl }} className="w-12 h-12 rounded-full mr-3" />
-                <View className="flex-1">
-                  <Text className="text-sm font-bold text-gray-900">{u.name}</Text>
-                  <Text className="text-gray-500 text-xs">{u.location}</Text>
-                  <Text className="text-green-700 font-semibold text-[11px]">{u.greenPoints} Mata Hijau</Text>
-                </View>
-                {currentUser.id === u.id && <Check size={20} color="#16a34a" />}
-              </TouchableOpacity>
-            ))}
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {allUsers.map((u) => (
+                <TouchableOpacity
+                  key={u.id}
+                  onPress={() => {
+                    switchUserById(u.id);
+                    setPersonaModalVisible(false);
+                  }}
+                  className={`flex-row items-center p-3.5 rounded-2xl mb-2.5 border ${
+                    currentUser.id === u.id
+                      ? 'bg-green-50 border-green-600'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <Image source={{ uri: u.avatarUrl }} className="w-12 h-12 rounded-full mr-3" />
+                  <View className="flex-1">
+                    <View className="flex-row items-center">
+                      <Text className="text-sm font-bold text-gray-900 mr-2">{u.name}</Text>
+                      {u.role === 'Admin' && (
+                        <View className="bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                          <Text className="text-[10px] text-amber-800 font-bold">Admin/SV</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text className="text-gray-500 text-xs">{u.location}</Text>
+                    <Text className="text-gray-400 text-[11px]">{u.phone || 'Tiada telefon'}</Text>
+                  </View>
+                  {currentUser.id === u.id && <Check size={20} color="#16a34a" />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
             <TouchableOpacity
               onPress={() => setPersonaModalVisible(false)}
@@ -192,63 +265,28 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* Rewards Catalog Modal */}
-      <Modal visible={rewardModalVisible} transparent animationType="slide">
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white rounded-t-3xl p-6 max-h-[85%]">
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="flex-row items-center">
-                <Gift size={22} color="#ca8a04" />
-                <Text className="text-xl font-bold text-gray-900 ml-2">Katalog Ganjaran Lestari</Text>
-              </View>
-              <TouchableOpacity onPress={() => setRewardModalVisible(false)}>
-                <Text className="text-gray-500 font-bold">Tutup</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text className="text-gray-500 text-xs mb-4">
-              Tebus Mata Hijau yang dikumpul untuk baucar diskaun daripada rakan penaja komuniti!
-            </Text>
-
-            <View className="bg-green-50 p-4 rounded-2xl mb-4 border border-green-200 flex-row justify-between items-center">
-              <Text className="text-green-900 font-bold text-sm">Baki Mata Hijau Anda:</Text>
-              <Text className="text-green-700 font-black text-xl">{currentUser.greenPoints} pts</Text>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {[
-                { name: 'Baucar RM5 Kedai Runcit Mesra Komuniti', cost: 100, sponsor: 'Koperasi Komuniti Melati' },
-                { name: 'Diskaun 15% Pusat Servis Basikal Hijau', cost: 150, sponsor: 'Green Ride Skudai' },
-                { name: 'Beg Kitar Semula Edisi Khas NeighbourLoop', cost: 80, sponsor: 'Majlis Bandaraya' },
-                { name: 'Sijil Penghargaan Wira Kelestarian Kejiranan', cost: 200, sponsor: 'NGO Prihatin Lestari' },
-              ].map((reward, i) => (
-                <View key={i} className="bg-gray-50 p-3.5 rounded-2xl mb-3 border border-gray-200">
-                  <View className="flex-row justify-between items-start">
-                    <Text className="text-sm font-bold text-gray-900 flex-1 mr-2">{reward.name}</Text>
-                    <Text className="text-xs font-black text-green-700">{reward.cost} pts</Text>
-                  </View>
-                  <Text className="text-gray-400 text-xs mt-1">Ditaja oleh: {reward.sponsor}</Text>
-                  <TouchableOpacity
-                    disabled={currentUser.greenPoints < reward.cost}
-                    className={`mt-3 py-2 rounded-xl items-center ${
-                      currentUser.greenPoints >= reward.cost ? 'bg-green-600' : 'bg-gray-200'
-                    }`}
-                  >
-                    <Text className={`text-xs font-bold ${currentUser.greenPoints >= reward.cost ? 'text-white' : 'text-gray-400'}`}>
-                      {currentUser.greenPoints >= reward.cost ? 'Tebus Sekarang' : 'Mata Belum Mencukupi'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
       {/* Location Modal */}
       <LocationModal
         visible={locationModalVisible}
         onClose={() => setLocationModalVisible(false)}
+      />
+
+      {/* Edit Contact Details Modal */}
+      <EditContactModal
+        visible={editContactVisible}
+        onClose={() => setEditContactVisible(false)}
+      />
+
+      {/* Chat History Modal */}
+      <ChatHistoryModal
+        visible={chatHistoryVisible}
+        onClose={() => setChatHistoryVisible(false)}
+      />
+
+      {/* Admin Dashboard Modal (For SV Review) */}
+      <AdminDashboardModal
+        visible={adminDashboardVisible}
+        onClose={() => setAdminDashboardVisible(false)}
       />
     </SafeAreaView>
   );

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
-from schemas import Listing, ListingCreate, ActivityItem
-from database import LISTINGS_DB, USERS_DB, ACTIVITIES_DB
+from schemas import Listing, ListingCreate
+from database import LISTINGS_DB, USERS_DB
 import uuid
 
 router = APIRouter(prefix="/marketplace", tags=["Marketplace"])
@@ -33,7 +33,6 @@ def get_listing(listing_id: str):
 def create_listing(data: ListingCreate, user_id: str = Query("u1")):
     user = USERS_DB.get(user_id, USERS_DB["u1"])
     
-    # Default placeholder image if none provided
     img_url = data.imageUrl or "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400"
     
     new_listing = Listing(
@@ -47,22 +46,18 @@ def create_listing(data: ListingCreate, user_id: str = Query("u1")):
         imageUrl=img_url,
         sellerId=user.id,
         sellerName=user.name,
+        sellerPhone=data.sellerPhone or user.phone,
+        sellerContactNotes=data.sellerContactNotes or user.contactNotes,
         createdAt="Baru sahaja"
     )
     LISTINGS_DB.insert(0, new_listing)
-    
-    # Award Green Points for listing preloved item (+10 points)
-    user.greenPoints += 10
-    
-    # Add activity
-    ACTIVITIES_DB.insert(0, ActivityItem(
-        id=f"a{uuid.uuid4().hex[:6]}",
-        title=f"{user.name} menyenaraikan {data.title}",
-        description=f"Barang preloved di ruangan Marketplace (RM {data.price:.2f})",
-        timestamp="Baru sahaja",
-        pointsEarned=10,
-        category="marketplace"
-    ))
-    
     return new_listing
 
+@router.delete("/{listing_id}")
+def delete_listing(listing_id: str):
+    global LISTINGS_DB
+    for i, item in enumerate(LISTINGS_DB):
+        if item.id == listing_id:
+            del LISTINGS_DB[i]
+            return {"success": True, "message": "Listing deleted successfully"}
+    raise HTTPException(status_code=404, detail="Listing not found")

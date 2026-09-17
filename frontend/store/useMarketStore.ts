@@ -5,6 +5,7 @@ import { mockListings } from '../services/mockData';
 interface MarketState {
   listings: Listing[];
   addListing: (listing: Omit<Listing, 'id' | 'createdAt'>) => void;
+  deleteListing: (id: string) => void;
   filterListings: (category: string, search: string, maxDistance?: number) => Listing[];
 }
 
@@ -19,6 +20,10 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     };
     return { listings: [newListing, ...state.listings] };
   }),
+
+  deleteListing: (id) => set((state) => ({
+    listings: state.listings.filter((item) => item.id !== id),
+  })),
 
   filterListings: (category, search, maxDistance) => {
     const { listings } = get();

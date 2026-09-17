@@ -6,14 +6,17 @@ import {
   ScrollView, 
   Image, 
   TouchableOpacity, 
-  Modal 
+  Modal,
+  Linking 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Plus, MapPin, X, MessageCircle, CheckCircle, Tag } from 'lucide-react-native';
+import { Search, Plus, MapPin, X, MessageCircle, Phone, Tag, CheckCircle2 } from 'lucide-react-native';
 import { useMarketStore } from '../../store/useMarketStore';
 import { useUserStore } from '../../store/useUserStore';
 import { Listing } from '../../types';
 import SuccessModal from '../../components/SuccessModal';
+import ImagePickerButton from '../../components/ImagePickerButton';
+import ChatModal from '../../components/ChatModal';
 
 const CATEGORIES = ['Semua', 'Perabot', 'Elektronik', 'Pakaian', 'Lain-lain'];
 const PRESET_IMAGES = [
@@ -26,7 +29,7 @@ const PRESET_IMAGES = [
 
 export default function MarketplaceScreen() {
   const { listings, addListing } = useMarketStore();
-  const { currentUser, addGreenPoints } = useUserStore();
+  const { currentUser } = useUserStore();
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
@@ -40,13 +43,15 @@ export default function MarketplaceScreen() {
   const [category, setCategory] = useState<'Perabot' | 'Elektronik' | 'Pakaian' | 'Lain-lain'>('Perabot');
   const [condition, setCondition] = useState<'Baru' | 'Seperti Baru' | 'Terpakai'>('Terpakai');
   const [selectedImage, setSelectedImage] = useState(PRESET_IMAGES[0]);
+  const [sellerPhone, setSellerPhone] = useState(currentUser.phone || '');
+  const [sellerContactNotes, setSellerContactNotes] = useState(currentUser.contactNotes || '');
 
   // Success Feedback
   const [successVisible, setSuccessVisible] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Chat State
-  const [contactSuccess, setContactSuccess] = useState(false);
+  // Interactive Chat Modal
+  const [chatModalVisible, setChatModalVisible] = useState(false);
 
   const filteredListings = listings.filter((item) => {
     const matchCat = selectedCategory === 'Semua' || item.category === selectedCategory;
@@ -69,13 +74,12 @@ export default function MarketplaceScreen() {
       category,
       condition,
       distance: 0.8,
-      imageUrl: selectedImage,
+      imageUrl: selectedImage || PRESET_IMAGES[0],
       sellerId: currentUser.id,
       sellerName: currentUser.name,
+      sellerPhone: sellerPhone.trim() || undefined,
+      sellerContactNotes: sellerContactNotes.trim() || undefined,
     });
-
-    // Reward Green Points
-    addGreenPoints(10, `${currentUser.name} menyenaraikan ${title}`, 'Jual barangan preloved di Marketplace', 'marketplace');
 
     setCreateModalVisible(false);
     setTitle('');
@@ -83,6 +87,15 @@ export default function MarketplaceScreen() {
     setPrice('');
     setSuccessMsg('Barangan anda berjaya dimuat naik ke ruangan jualan kejiranan.');
     setSuccessVisible(true);
+  };
+
+  const handleOpenWhatsApp = (phone?: string) => {
+    if (!phone) return;
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const intlPhone = cleanPhone.startsWith('0') ? '6' + cleanPhone : cleanPhone;
+    Linking.openURL(`whatsapp://send?phone=${intlPhone}&text=${encodeURIComponent(`Salam, saya berminat dengan barang "${selectedListing?.title}" di NeighbourLoop.`)}`).catch(() => {
+      Linking.openURL(`https://wa.me/${intlPhone}`);
+    });
   };
 
   return (
@@ -96,6 +109,7 @@ export default function MarketplaceScreen() {
           <Search size={18} color="#9ca3af" />
           <TextInput
             placeholder="Cari barang preloved sekitar anda..."
+            placeholderTextColor="#9ca3af"
             className="flex-1 ml-2 text-sm text-gray-800"
             value={search}
             onChangeText={setSearch}
@@ -142,10 +156,7 @@ export default function MarketplaceScreen() {
           filteredListings.map((item) => (
             <TouchableOpacity
               key={item.id}
-              onPress={() => {
-                setSelectedListing(item);
-                setContactSuccess(false);
-              }}
+              onPress={() => setSelectedListing(item)}
               className="flex-row bg-white rounded-2xl p-3 mb-3 border border-gray-100 shadow-sm shadow-gray-200"
             >
               <Image
@@ -183,7 +194,11 @@ export default function MarketplaceScreen() {
 
       {/* Floating Button "+ Jual Barang" */}
       <TouchableOpacity
-        onPress={() => setCreateModalVisible(true)}
+        onPress={() => {
+          setSellerPhone(currentUser.phone || '');
+          setSellerContactNotes(currentUser.contactNotes || '');
+          setCreateModalVisible(true);
+        }}
         className="absolute bottom-6 right-6 bg-blue-600 px-5 py-3.5 rounded-full flex-row items-center shadow-lg shadow-blue-600/40"
       >
         <Plus size={20} color="white" />
@@ -194,7 +209,7 @@ export default function MarketplaceScreen() {
       {selectedListing && (
         <Modal visible={true} transparent animationType="slide">
           <View className="flex-1 justify-end bg-black/50">
-            <View className="bg-white rounded-t-3xl p-6 max-h-[85%]">
+            <View className="bg-white rounded-t-3xl p-6 max-h-[88%]">
               <View className="flex-row justify-between items-center mb-3">
                 <Text className="text-xl font-bold text-gray-900">Maklumat Barang</Text>
                 <TouchableOpacity onPress={() => setSelectedListing(null)}>
@@ -226,7 +241,8 @@ export default function MarketplaceScreen() {
                   {selectedListing.description}
                 </Text>
 
-                <View className="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-100">
+                {/* Seller & Contact Details Box */}
+                <View className="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-200">
                   <Text className="text-xs text-gray-400 font-semibold uppercase mb-1">Penjual</Text>
                   <Text className="text-sm font-bold text-gray-800">{selectedListing.sellerName}</Text>
                   <View className="flex-row items-center mt-1">
@@ -235,26 +251,38 @@ export default function MarketplaceScreen() {
                       Berdekatan ({selectedListing.distance} km dari lokasi anda)
                     </Text>
                   </View>
+
+                  {/* Optional Seller Contact Details */}
+                  {selectedListing.sellerPhone ? (
+                    <View className="mt-2.5 pt-2.5 border-t border-gray-200 flex-row justify-between items-center">
+                      <View>
+                        <Text className="text-[11px] text-gray-400 uppercase font-semibold">No. WhatsApp / Telefon</Text>
+                        <Text className="text-xs font-bold text-gray-800">{selectedListing.sellerPhone}</Text>
+                        {selectedListing.sellerContactNotes ? (
+                          <Text className="text-[11px] text-gray-500 italic mt-0.5">{selectedListing.sellerContactNotes}</Text>
+                        ) : null}
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleOpenWhatsApp(selectedListing.sellerPhone)}
+                        className="bg-green-600 px-3 py-1.5 rounded-xl flex-row items-center"
+                      >
+                        <Phone size={12} color="white" />
+                        <Text className="text-white text-xs font-bold ml-1">WhatsApp</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
                 </View>
 
-                {contactSuccess ? (
-                  <View className="bg-green-50 p-4 rounded-2xl flex-row items-center mb-4 border border-green-200">
-                    <CheckCircle size={20} color="#16a34a" />
-                    <Text className="text-green-800 font-semibold text-xs ml-2 flex-1">
-                      Mesej dihantar kepada {selectedListing.sellerName}! Sila tunggu respons untuk tetapkan sesi pickup.
-                    </Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => setContactSuccess(true)}
-                    className="w-full bg-blue-600 py-4 rounded-2xl flex-row justify-center items-center shadow-md shadow-blue-600/30 mb-2"
-                  >
-                    <MessageCircle size={20} color="white" />
-                    <Text className="text-white font-bold text-base ml-2">
-                      Hubungi Penjual (Chat & Meet-up)
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                {/* Main Action: Chatbox Direct Launch */}
+                <TouchableOpacity
+                  onPress={() => setChatModalVisible(true)}
+                  className="w-full bg-blue-600 py-4 rounded-2xl flex-row justify-center items-center shadow-md shadow-blue-600/30 mb-3"
+                >
+                  <MessageCircle size={20} color="white" />
+                  <Text className="text-white font-bold text-base ml-2">
+                    Mesej Penjual (Chatbox)
+                  </Text>
+                </TouchableOpacity>
               </ScrollView>
             </View>
           </View>
@@ -264,7 +292,7 @@ export default function MarketplaceScreen() {
       {/* Create Listing Modal */}
       <Modal visible={createModalVisible} transparent animationType="slide">
         <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white rounded-t-3xl p-6 max-h-[90%]">
+          <View className="bg-white rounded-t-3xl p-6 max-h-[92%]">
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-xl font-bold text-gray-900">+ Muat Naik Barang Jualan</Text>
               <TouchableOpacity onPress={() => setCreateModalVisible(false)}>
@@ -273,24 +301,18 @@ export default function MarketplaceScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Pilih Gambar</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-                {PRESET_IMAGES.map((img, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    onPress={() => setSelectedImage(img)}
-                    className={`mr-2.5 rounded-xl border-2 overflow-hidden ${
-                      selectedImage === img ? 'border-blue-600' : 'border-transparent'
-                    }`}
-                  >
-                    <Image source={{ uri: img }} className="w-16 h-16 rounded-lg bg-gray-100" />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              {/* Image Picker with Gallery / Camera + Presets */}
+              <ImagePickerButton
+                title="Pilih / Muat Naik Gambar Barang"
+                selectedImageUri={selectedImage}
+                onImageSelected={setSelectedImage}
+                presetImages={PRESET_IMAGES}
+              />
 
               <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Nama Barang</Text>
               <TextInput
                 placeholder="Contoh: Meja Kayu, Basikal, dsb"
+                placeholderTextColor="#9ca3af"
                 value={title}
                 onChangeText={setTitle}
                 className="bg-gray-100 rounded-xl px-4 py-3 mb-3 text-sm text-gray-900"
@@ -299,6 +321,7 @@ export default function MarketplaceScreen() {
               <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Harga (RM)</Text>
               <TextInput
                 placeholder="Contoh: 35"
+                placeholderTextColor="#9ca3af"
                 keyboardType="numeric"
                 value={price}
                 onChangeText={setPrice}
@@ -341,19 +364,41 @@ export default function MarketplaceScreen() {
 
               <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Penerangan</Text>
               <TextInput
-                placeholder="Keterangan mengenai keadaan barang, ukuran, dan sebab jual..."
+                placeholder="Keterangan mengenai keadaan barang, ukuran, dan cara COD..."
+                placeholderTextColor="#9ca3af"
                 multiline
                 numberOfLines={3}
                 value={description}
                 onChangeText={setDescription}
+                className="bg-gray-100 rounded-xl px-4 py-3 mb-3 text-sm text-gray-900"
+              />
+
+              {/* Optional Contact Details for this listing */}
+              <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">No. Telefon / WhatsApp (Pilihan)</Text>
+              <TextInput
+                placeholder="Contoh: 012-3456789 (Kosongkan jika ingin guna chat sahaja)"
+                placeholderTextColor="#9ca3af"
+                keyboardType="phone-pad"
+                value={sellerPhone}
+                onChangeText={setSellerPhone}
+                className="bg-gray-100 rounded-xl px-4 py-3 mb-3 text-sm text-gray-900"
+              />
+
+              <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Nota Perhubungan (Pilihan)</Text>
+              <TextInput
+                placeholder="Contoh: Boleh WhatsApp atau pick up petang."
+                placeholderTextColor="#9ca3af"
+                value={sellerContactNotes}
+                onChangeText={setSellerContactNotes}
                 className="bg-gray-100 rounded-xl px-4 py-3 mb-5 text-sm text-gray-900"
               />
 
+              {/* Submit Button (Clean, no points) */}
               <TouchableOpacity
                 onPress={handleCreateListing}
                 className="w-full bg-blue-600 py-4 rounded-2xl items-center shadow-md shadow-blue-600/30"
               >
-                <Text className="text-white font-bold text-base">Siarkan Iklan Jualan (+10 Pts)</Text>
+                <Text className="text-white font-bold text-base">Siarkan Iklan Jualan</Text>
               </TouchableOpacity>
               <View className="h-6" />
             </ScrollView>
@@ -361,14 +406,31 @@ export default function MarketplaceScreen() {
         </View>
       </Modal>
 
-      {/* Points & Feedback Modal */}
+      {/* Success Feedback Modal */}
       <SuccessModal
         visible={successVisible}
-        points={10}
         title="Iklan Berjaya Diterbitkan!"
         message={successMsg}
         onClose={() => setSuccessVisible(false)}
       />
+
+      {/* Interactive Chat Modal with Seller */}
+      {selectedListing && (
+        <ChatModal
+          visible={chatModalVisible}
+          onClose={() => setChatModalVisible(false)}
+          recipient={{
+            id: selectedListing.sellerId,
+            name: selectedListing.sellerName,
+            phone: selectedListing.sellerPhone,
+          }}
+          itemContext={{
+            title: selectedListing.title,
+            price: selectedListing.price,
+            category: 'Marketplace',
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }

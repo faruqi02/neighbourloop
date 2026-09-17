@@ -6,10 +6,15 @@ class User(BaseModel):
     name: str
     email: str
     phone: Optional[str] = ""
+    telegram: Optional[str] = ""
+    contactNotes: Optional[str] = ""
+    preferredContactMethod: Optional[str] = "Semua"
     location: str
     radiusKm: int = 5
-    greenPoints: int = 120
     avatarUrl: Optional[str] = None
+    role: Optional[str] = "User"
+    status: Optional[str] = "Aktif"
+    joinedDate: Optional[str] = None
 
 class LoginRequest(BaseModel):
     identifier: str  # email or phone
@@ -33,6 +38,8 @@ class Listing(BaseModel):
     imageUrl: str
     sellerId: str
     sellerName: str
+    sellerPhone: Optional[str] = None
+    sellerContactNotes: Optional[str] = None
     createdAt: str
 
 class ListingCreate(BaseModel):
@@ -42,6 +49,8 @@ class ListingCreate(BaseModel):
     category: Literal['Perabot', 'Elektronik', 'Pakaian', 'Lain-lain']
     condition: Literal['Baru', 'Seperti Baru', 'Terpakai'] = 'Terpakai'
     imageUrl: Optional[str] = None
+    sellerPhone: Optional[str] = None
+    sellerContactNotes: Optional[str] = None
 
 class RecycleCenter(BaseModel):
     id: str
@@ -62,6 +71,8 @@ class DonationItem(BaseModel):
     imageUrl: str
     donorId: str
     donorName: str
+    donorPhone: Optional[str] = None
+    donorContactNotes: Optional[str] = None
     distance: float
     status: Literal['Available', 'Claimed'] = 'Available'
     claimedBy: Optional[str] = None
@@ -72,10 +83,12 @@ class DonationCreate(BaseModel):
     description: str
     category: str
     imageUrl: Optional[str] = None
+    donorPhone: Optional[str] = None
+    donorContactNotes: Optional[str] = None
 
 class SmartRecommendRequest(BaseModel):
     itemName: str
-    category: str  # Pakaian & Tekstil, E-waste, Kertas, Plastik, Kaca, Logam, etc.
+    category: str
     condition: Literal['Masih elok', 'Rosak / Tidak Berfungsi']
     description: Optional[str] = ""
 
@@ -85,7 +98,6 @@ class SmartRecommendResponse(BaseModel):
     explanation: str
     suggestedActions: List[str]  # ['Marketplace', 'NGO', 'Komuniti', 'RecycleCenter']
     matchingCenters: List[RecycleCenter]
-    potentialGreenPoints: int
 
 class HelpRequest(BaseModel):
     id: str
@@ -96,9 +108,11 @@ class HelpRequest(BaseModel):
     type: Literal['Permintaan', 'Tawaran']
     requesterId: str
     requesterName: str
+    requesterPhone: Optional[str] = None
+    requesterContactNotes: Optional[str] = None
+    imageUrl: Optional[str] = None
     status: Literal['Open', 'Completed'] = 'Open'
     fulfilledBy: Optional[str] = None
-    rewardPoints: int = 20
     createdAt: str
 
 class HelpCreate(BaseModel):
@@ -106,13 +120,70 @@ class HelpCreate(BaseModel):
     description: str
     category: Literal['Pinjam Barang', 'Khidmat/Tenaga', 'Kemahiran', 'Lain-lain']
     type: Literal['Permintaan', 'Tawaran']
-    rewardPoints: Optional[int] = 20
+    imageUrl: Optional[str] = None
+    requesterPhone: Optional[str] = None
+    requesterContactNotes: Optional[str] = None
 
-class ActivityItem(BaseModel):
+class CommunityNotice(BaseModel):
     id: str
     title: str
+    category: Literal['Gotong-Royong', 'Penyelenggaraan', 'Keselamatan', 'Hebahan', 'Aktiviti Komuniti']
     description: str
-    timestamp: str
-    pointsEarned: int
-    category: Literal['marketplace', 'recycle', 'help', 'donation']
+    date: str
+    time: Optional[str] = None
+    location: str
+    organizer: str
+    contactPerson: Optional[str] = None
+    isImportant: bool = False
+    imageUrl: Optional[str] = None
+    createdAt: str
 
+class CommunityNoticeCreate(BaseModel):
+    title: str
+    category: Literal['Gotong-Royong', 'Penyelenggaraan', 'Keselamatan', 'Hebahan', 'Aktiviti Komuniti']
+    description: str
+    date: str
+    time: Optional[str] = None
+    location: str
+    organizer: str
+    contactPerson: Optional[str] = None
+    isImportant: Optional[bool] = False
+    imageUrl: Optional[str] = None
+
+class ChatMessage(BaseModel):
+    id: str
+    conversationId: str
+    senderId: str
+    senderName: str
+    text: str
+    timestamp: str
+    isMe: Optional[bool] = False
+
+class ChatConversation(BaseModel):
+    id: str
+    participantId: str
+    participantName: str
+    participantAvatar: Optional[str] = None
+    participantPhone: Optional[str] = None
+    itemContextTitle: Optional[str] = None
+    itemContextPrice: Optional[float] = None
+    itemContextCategory: Optional[str] = None
+    lastMessage: str
+    lastMessageTime: str
+    unreadCount: int = 0
+    messages: List[ChatMessage] = []
+
+class SendMessageRequest(BaseModel):
+    conversationId: str
+    text: str
+    senderId: str
+    senderName: str
+
+class AdminStatsResponse(BaseModel):
+    totalUsers: int
+    totalListings: int
+    totalDonations: int
+    totalHelpRequests: int
+    totalCenters: int
+    totalNotices: int
+    systemStatus: str

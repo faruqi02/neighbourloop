@@ -3,10 +3,15 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
+  telegram?: string;
+  contactNotes?: string;
+  preferredContactMethod?: 'Semua' | 'WhatsApp' | 'Telegram' | 'Panggilan' | 'Chat Aplikasi';
   location: string;
   radiusKm: number;
-  greenPoints: number;
   avatarUrl?: string;
+  role?: 'User' | 'Admin';
+  status?: 'Aktif' | 'Digantung';
+  joinedDate?: string;
 }
 
 export interface Listing {
@@ -20,6 +25,8 @@ export interface Listing {
   imageUrl: string;
   sellerId: string;
   sellerName: string;
+  sellerPhone?: string;
+  sellerContactNotes?: string;
   createdAt: string;
 }
 
@@ -46,6 +53,8 @@ export interface DonationItem {
   imageUrl: string;
   donorId: string;
   donorName: string;
+  donorPhone?: string;
+  donorContactNotes?: string;
   distance: number;
   status: 'Available' | 'Claimed';
   claimedBy?: string;
@@ -61,19 +70,52 @@ export interface HelpRequest {
   type: 'Permintaan' | 'Tawaran';
   requesterId: string;
   requesterName: string;
+  requesterPhone?: string;
+  requesterContactNotes?: string;
+  imageUrl?: string;
   status: 'Open' | 'Completed';
   fulfilledBy?: string;
-  rewardPoints: number;
   createdAt: string;
 }
 
-export interface ActivityItem {
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: string;
+  isMe?: boolean;
+}
+
+export interface ChatConversation {
+  id: string;
+  participantId: string;
+  participantName: string;
+  participantAvatar?: string;
+  participantPhone?: string;
+  itemContextTitle?: string;
+  itemContextPrice?: number;
+  itemContextCategory?: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount?: number;
+  messages: ChatMessage[];
+}
+
+export interface CommunityNotice {
   id: string;
   title: string;
+  category: 'Gotong-Royong' | 'Penyelenggaraan' | 'Keselamatan' | 'Hebahan' | 'Aktiviti Komuniti';
   description: string;
-  timestamp: string;
-  pointsEarned: number;
-  category: 'marketplace' | 'recycle' | 'help' | 'donation';
+  date: string;
+  time?: string;
+  location: string;
+  organizer: string;
+  contactPerson?: string;
+  isImportant?: boolean;
+  imageUrl?: string;
+  createdAt: string;
 }
 
 export interface SmartRecommendation {
@@ -82,5 +124,4 @@ export interface SmartRecommendation {
   explanation: string;
   suggestedActions: ('Marketplace' | 'NGO' | 'Komuniti' | 'RecycleCenter')[];
   matchingCenters: RecycleCenter[];
-  potentialGreenPoints: number;
 }

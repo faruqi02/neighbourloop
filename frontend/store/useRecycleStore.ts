@@ -6,6 +6,7 @@ interface RecycleState {
   centers: RecycleCenter[];
   donations: DonationItem[];
   addDonation: (donationData: Omit<DonationItem, 'id' | 'createdAt' | 'status'>) => void;
+  deleteDonation: (id: string) => void;
   claimDonation: (donationId: string, claimerName: string) => void;
   getSmartRecommendation: (
     itemName: string,
@@ -28,6 +29,10 @@ export const useRecycleStore = create<RecycleState>((set, get) => ({
     return { donations: [newItem, ...state.donations] };
   }),
 
+  deleteDonation: (id) => set((state) => ({
+    donations: state.donations.filter((item) => item.id !== id),
+  })),
+
   claimDonation: (donationId, claimerName) => set((state) => ({
     donations: state.donations.map((item) =>
       item.id === donationId
@@ -47,10 +52,9 @@ export const useRecycleStore = create<RecycleState>((set, get) => ({
       return {
         decision: 'Derma',
         title: 'Cadangan Pintar: Sesuai untuk Didermakan atau Dijual',
-        explanation: `Barang "${itemName}" masih dalam keadaan elok! Mengikut prinsip Ekonomi Kitaran (SDG 12), barangan elok disyorkan untuk digunakan semula melalui derma komuniti atau jualan preloved sebelum dilupuskan.`,
+        explanation: `Barang "${itemName}" masih dalam keadaan elok! Mengikut amalan kelestarian komuniti, barangan elok disyorkan untuk digunakan semula melalui derma komuniti atau jualan preloved sebelum dilupuskan.`,
         suggestedActions: ['NGO', 'Komuniti', 'Marketplace'],
         matchingCenters: ngos,
-        potentialGreenPoints: 50,
       };
     } else {
       const recycleCenters = centers.filter((c) => c.type === 'RecycleCenter');
@@ -66,7 +70,6 @@ export const useRecycleStore = create<RecycleState>((set, get) => ({
         explanation,
         suggestedActions: ['RecycleCenter'],
         matchingCenters: recycleCenters,
-        potentialGreenPoints: 30,
       };
     }
   },

@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, marketplace, recycle, help, users
+from routers import auth, marketplace, recycle, help, users, admin, notices, chat
 
 app = FastAPI(
     title="NeighbourLoop API",
     description="Backend API for NeighbourLoop FYP Community Platform (FastAPI)",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 # Enable CORS for React Native / Expo Go development
@@ -23,14 +23,17 @@ app.include_router(marketplace.router)
 app.include_router(recycle.router)
 app.include_router(help.router)
 app.include_router(users.router)
+app.include_router(admin.router)
+app.include_router(notices.router)
+app.include_router(chat.router)
 
 @app.get("/")
 def root():
     return {
         "status": "online",
         "app": "NeighbourLoop API",
-        "version": "1.0.0",
-        "description": "Platform Komuniti Lestari (Help Nearby, Marketplace, Smart Recycling & Donation)"
+        "version": "2.0.0",
+        "description": "Platform Komuniti Lestari (Marketplace, Smart Recycling & Donation, Help Nearby, Chatbox & Community Notices)"
     }
 
 @app.get("/health")
@@ -40,4 +43,3 @@ def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-

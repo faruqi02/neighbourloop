@@ -1,37 +1,76 @@
 from typing import List, Dict
-from schemas import User, Listing, RecycleCenter, HelpRequest, DonationItem, ActivityItem
+from schemas import (
+    User, 
+    Listing, 
+    RecycleCenter, 
+    HelpRequest, 
+    DonationItem, 
+    CommunityNotice, 
+    ChatConversation, 
+    ChatMessage
+)
 
-# Current demo users
+# Current demo users (including Admin & SV)
 USERS_DB: Dict[str, User] = {
     "u1": User(
         id="u1",
         name="Aisyah",
         email="aisyah@example.com",
         phone="012-3456789",
+        telegram="@aisyah_melati",
+        contactNotes="Boleh WhatsApp atau call bila-bila masa.",
+        preferredContactMethod="WhatsApp",
         location="Taman Melati, Johor Bahru",
         radiusKm=5,
-        greenPoints=120,
-        avatarUrl="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150"
+        avatarUrl="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+        role="User",
+        status="Aktif",
+        joinedDate="Januari 2026"
     ),
     "u2": User(
         id="u2",
         name="Abu Bakar",
         email="abu@utm.my",
         phone="013-9876543",
+        telegram="@abu_utm",
+        contactNotes="Pelajar UTM. WhatsApp waktu petang atau malam sahaja.",
+        preferredContactMethod="Chat Aplikasi",
         location="Kolej Rahman Putra, UTM",
         radiusKm=5,
-        greenPoints=80,
-        avatarUrl="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+        avatarUrl="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+        role="User",
+        status="Aktif",
+        joinedDate="Februari 2026"
     ),
     "u3": User(
         id="u3",
         name="Siti Aminah",
         email="siti@example.com",
         phone="017-1122334",
+        telegram="@sitiaminah_jb",
+        contactNotes="Suri rumah. Call atau WhatsApp sebelum jam 8 malam.",
+        preferredContactMethod="WhatsApp",
         location="Taman Perling, Johor Bahru",
         radiusKm=10,
-        greenPoints=210,
-        avatarUrl="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150"
+        avatarUrl="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
+        role="User",
+        status="Aktif",
+        joinedDate="Januari 2026"
+    ),
+    "u_admin": User(
+        id="u_admin",
+        name="Dr. Faruqi (Admin & SV)",
+        email="admin@neighbourloop.org",
+        phone="019-8877665",
+        telegram="@admin_neighbourloop",
+        contactNotes="Penyelia & Pentadbir Platform Komuniti NeighbourLoop.",
+        preferredContactMethod="Semua",
+        location="Pusat Pentadbiran, UTM Skudai",
+        radiusKm=20,
+        avatarUrl="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+        role="Admin",
+        status="Aktif",
+        joinedDate="Disember 2025"
     )
 }
 
@@ -47,6 +86,8 @@ LISTINGS_DB: List[Listing] = [
         imageUrl="https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=400",
         sellerId="u2",
         sellerName="Abu Bakar",
+        sellerPhone="013-9876543",
+        sellerContactNotes="Boleh pick up di Kolej Rahman Putra UTM.",
         createdAt="Hari ini, 10:30 AM"
     ),
     Listing(
@@ -60,6 +101,7 @@ LISTINGS_DB: List[Listing] = [
         imageUrl="https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=400",
         sellerId="u3",
         sellerName="Siti Aminah",
+        sellerPhone="017-1122334",
         createdAt="Semalam"
     ),
     Listing(
@@ -73,6 +115,7 @@ LISTINGS_DB: List[Listing] = [
         imageUrl="https://images.unsplash.com/photo-1618941716939-553df3c6c278?w=400",
         sellerId="u1",
         sellerName="Aisyah",
+        sellerPhone="012-3456789",
         createdAt="2 hari lalu"
     ),
     Listing(
@@ -86,6 +129,7 @@ LISTINGS_DB: List[Listing] = [
         imageUrl="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400",
         sellerId="u2",
         sellerName="Abu Bakar",
+        sellerPhone="013-9876543",
         createdAt="3 hari lalu"
     )
 ]
@@ -104,7 +148,7 @@ RECYCLE_CENTERS_DB: List[RecycleCenter] = [
     ),
     RecycleCenter(
         id="r2",
-        name="Pusat E-Waste & Fabrik Skudai",
+        name="Pusat Pengumpulan E-Waste & Fabrik Skudai",
         type="RecycleCenter",
         address="Jalan Universiti, Taman Universiti, 81300 Skudai",
         distance=3.4,
@@ -121,7 +165,7 @@ RECYCLE_CENTERS_DB: List[RecycleCenter] = [
         distance=0.8,
         operatingHours="10:00 AM - 7:00 PM",
         coordinates={"lat": 1.488, "lng": 103.702},
-        typesAccepted=["Pakaian & Tekstil", "Buku", "Perabot Kecil", "Mainan", "Peralatan Rumah"],
+        typesAccepted=["Pakaian & Tekstil", "Buku", "Perabot Kecil", "Mainan Kanak-kanak"],
         contactPhone="019-7654321"
     ),
     RecycleCenter(
@@ -146,6 +190,7 @@ DONATIONS_DB: List[DonationItem] = [
         imageUrl="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400",
         donorId="u1",
         donorName="Aisyah",
+        donorPhone="012-3456789",
         distance=0.6,
         status="Available",
         createdAt="1 jam lalu"
@@ -158,6 +203,7 @@ DONATIONS_DB: List[DonationItem] = [
         imageUrl="https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400",
         donorId="u3",
         donorName="Siti Aminah",
+        donorPhone="017-1122334",
         distance=1.8,
         status="Available",
         createdAt="3 jam lalu"
@@ -174,8 +220,8 @@ HELP_REQUESTS_DB: List[HelpRequest] = [
         type="Permintaan",
         requesterId="u2",
         requesterName="Abu Bakar",
+        requesterPhone="013-9876543",
         status="Open",
-        rewardPoints=30,
         createdAt="20 minit lalu"
     ),
     HelpRequest(
@@ -187,49 +233,100 @@ HELP_REQUESTS_DB: List[HelpRequest] = [
         type="Permintaan",
         requesterId="u3",
         requesterName="Siti Aminah",
+        requesterPhone="017-1122334",
         status="Open",
-        rewardPoints=20,
         createdAt="1 jam lalu"
     ),
     HelpRequest(
         id="h3",
-        title="Tawaran: Tumpang hantar bungkusan ke J&T / PosLaju",
-        description="Saya nak pergi pejabat pos jam 3 petang ini. Siapa nak tumpang drop parcel boleh maklumkan.",
+        title="Tawaran: Tumpang hantar bungkusan ke PosLaju",
+        description="Saya nak pergi pejabat pos jam 3 petang ini. Boleh tumpang drop parcel.",
         category="Khidmat/Tenaga",
         distance=2.0,
         type="Tawaran",
         requesterId="u1",
         requesterName="Aisyah",
+        requesterPhone="012-3456789",
         status="Open",
-        rewardPoints=25,
         createdAt="3 jam lalu"
     )
 ]
 
-ACTIVITIES_DB: List[ActivityItem] = [
-    ActivityItem(
-        id="a1",
-        title="Abu Bakar menjual Meja Belajar",
-        description="Berjaya dijual kepada jiran blok sebelah",
-        timestamp="5 minit lalu",
-        pointsEarned=50,
-        category="marketplace"
+NOTICES_DB: List[CommunityNotice] = [
+    CommunityNotice(
+        id="not_1",
+        title="Program Gotong-Royong Perdana Komuniti Lestari",
+        category="Gotong-Royong",
+        description="Semua penduduk dijemput hadir untuk membersihkan perparitan, kawasan surau, dan taman permainan bagi membasmi tempat pembiakan nyamuk Aedes. Sarapan pagi disediakan.",
+        date="Ahad ini (21 Sept 2026)",
+        time="8:00 AM - 11:30 AM",
+        location="Padang Awam Jalan Melati 3, Taman Melati",
+        organizer="Persatuan Penduduk Taman Melati",
+        contactPerson="En. Razak (019-3344556)",
+        isImportant=True,
+        imageUrl="https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=400",
+        createdAt="Hari ini"
     ),
-    ActivityItem(
-        id="a2",
-        title="Siti Aminah menderma 5kg Pakaian Terpakai",
-        description="Dihantar ke Pusat Pengumpulan NGO Prihatin",
-        timestamp="15 minit lalu",
-        pointsEarned=30,
-        category="recycle"
+    CommunityNotice(
+        id="not_2",
+        title="Kerja Pembaikan Jalan Berlubang & Turap Semula",
+        category="Penyelenggaraan",
+        description="Pihak kontraktor MBJB akan menjalankan kerja-kerja menurap semula laluan utama. Laluan satu lorong akan dibuka secara bergilir. Sila pandu berhati-hati.",
+        date="Isnin - Rabu (22 - 24 Sept)",
+        time="9:00 AM - 4:00 PM",
+        location="Jalan Camar 2 hingga Persimpangan Utama, Taman Perling",
+        organizer="Majlis Bandaraya Iskandar Puteri (MBIP)",
+        contactPerson="Unit Aduan MBIP",
+        isImportant=True,
+        createdAt="Semalam"
     ),
-    ActivityItem(
-        id="a3",
-        title="Aisyah membantu jiran tumpang barang ke pos",
-        description="Bantuan diselesaikan dengan jiran sekitar Taman Melati",
-        timestamp="1 jam lalu",
-        pointsEarned=25,
-        category="help"
+    CommunityNotice(
+        id="not_3",
+        title="Gangguan Sementara Bekalan Air Berjadual",
+        category="Penyelenggaraan",
+        description="Kerja penggantian injap paip utama oleh Ranhill SAJ. Penduduk dinasihatkan menyimpan air secukupnya untuk kegunaan sepanjang tempoh kerja.",
+        date="Khamis (25 Sept 2026)",
+        time="10:00 PM - 5:00 AM",
+        location="Zon A & B (Taman Universiti & Sekitar UTM Skudai)",
+        organizer="Ranhill SAJ Sdn Bhd",
+        contactPerson="Talian Aduan SAJ (1800-88-7474)",
+        isImportant=False,
+        createdAt="2 hari lalu"
     )
 ]
 
+CONVERSATIONS_DB: List[ChatConversation] = [
+    ChatConversation(
+        id="conv_1",
+        participantId="u2",
+        participantName="Abu Bakar",
+        participantAvatar="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+        participantPhone="013-9876543",
+        itemContextTitle="Meja Belajar Kayu",
+        itemContextPrice=40.0,
+        itemContextCategory="Marketplace",
+        lastMessage="Boleh, petang ni jam 5 saya ada di kolej.",
+        lastMessageTime="10:45 AM",
+        unreadCount=1,
+        messages=[
+            ChatMessage(
+                id="m1",
+                conversationId="conv_1",
+                senderId="u1",
+                senderName="Aisyah",
+                text="Salam Abu Bakar, meja belajar kayu ni masih ada ke?",
+                timestamp="10:35 AM",
+                isMe=True
+            ),
+            ChatMessage(
+                id="m2",
+                conversationId="conv_1",
+                senderId="u2",
+                senderName="Abu Bakar",
+                text="Waalaikumussalam Aisyah, ya masih ada. Keadaan elok lagi.",
+                timestamp="10:40 AM",
+                isMe=False
+            )
+        ]
+    )
+]

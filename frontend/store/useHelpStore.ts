@@ -5,10 +5,11 @@ import { mockHelpRequests } from '../services/mockData';
 interface HelpState {
   requests: HelpRequest[];
   addRequest: (reqData: Omit<HelpRequest, 'id' | 'status' | 'createdAt'>) => void;
-  fulfillRequest: (requestId: string, helperName: string) => number;
+  deleteRequest: (id: string) => void;
+  fulfillRequest: (requestId: string, helperName: string) => void;
 }
 
-export const useHelpStore = create<HelpState>((set, get) => ({
+export const useHelpStore = create<HelpState>((set) => ({
   requests: mockHelpRequests,
 
   addRequest: (reqData) => set((state) => {
@@ -21,17 +22,18 @@ export const useHelpStore = create<HelpState>((set, get) => ({
     return { requests: [newItem, ...state.requests] };
   }),
 
+  deleteRequest: (id) => set((state) => ({
+    requests: state.requests.filter((r) => r.id !== id),
+  })),
+
   fulfillRequest: (requestId, helperName) => {
-    let points = 20;
     set((state) => ({
       requests: state.requests.map((r) => {
         if (r.id === requestId) {
-          points = r.rewardPoints;
           return { ...r, status: 'Completed', fulfilledBy: helperName };
         }
         return r;
       }),
     }));
-    return points;
   },
 }));

@@ -6,29 +6,38 @@ import {
   TouchableOpacity, 
   TextInput, 
   Modal, 
-  Image 
+  Image, 
+  Linking 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   HeartHandshake, 
   Plus, 
   MapPin, 
-  CheckCircle, 
   X, 
-  Sparkles, 
   User, 
-  Tag 
+  Tag, 
+  Phone, 
+  MessageSquare, 
+  CheckCircle2 
 } from 'lucide-react-native';
 import { useHelpStore } from '../../store/useHelpStore';
 import { useUserStore } from '../../store/useUserStore';
 import { HelpRequest } from '../../types';
 import SuccessModal from '../../components/SuccessModal';
+import ImagePickerButton from '../../components/ImagePickerButton';
+import ChatModal from '../../components/ChatModal';
 
 const CATEGORIES = ['Semua', 'Pinjam Barang', 'Khidmat/Tenaga', 'Kemahiran', 'Lain-lain'];
+const PRESET_IMAGES = [
+  'https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=400',
+  'https://images.unsplash.com/photo-1581244277943-fe4a9c777189?w=400',
+  'https://images.unsplash.com/photo-1517646287270-a5a9ca602e5c?w=400',
+];
 
 export default function HelpScreen() {
   const { requests, addRequest, fulfillRequest } = useHelpStore();
-  const { currentUser, addGreenPoints } = useUserStore();
+  const { currentUser } = useUserStore();
 
   const [activeTab, setActiveTab] = useState<'Permintaan' | 'Tawaran'>('Permintaan');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
@@ -40,13 +49,17 @@ export default function HelpScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<'Pinjam Barang' | 'Khidmat/Tenaga' | 'Kemahiran' | 'Lain-lain'>('Pinjam Barang');
-  const [rewardPoints, setRewardPoints] = useState(20);
+  const [selectedImage, setSelectedImage] = useState('');
+  const [requesterPhone, setRequesterPhone] = useState(currentUser.phone || '');
+  const [requesterNotes, setRequesterNotes] = useState(currentUser.contactNotes || '');
 
   // Success Feedback Modal
   const [successVisible, setSuccessVisible] = useState(false);
-  const [successPoints, setSuccessPoints] = useState(0);
   const [successTitle, setSuccessTitle] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Chat Modal
+  const [chatModalVisible, setChatModalVisible] = useState(false);
 
   const filteredRequests = requests.filter((r) => {
     const matchType = r.type === activeTab;
@@ -56,43 +69,47 @@ export default function HelpScreen() {
 
   const handleCreateRequest = () => {
     if (!title.trim()) {
-      alert('Sila masukkan tajuk permintaan/tawaran bantuan.');
+      alert('Sila masukkan tajuk bantuan.');
       return;
     }
 
     addRequest({
       title,
-      description: description || 'Bantuan komuniti untuk kejiranan.',
+      description: description || 'Bantuan komuniti kejiranan.',
       category,
       type: newType,
       distance: 0.4,
       requesterId: currentUser.id,
       requesterName: currentUser.name,
-      rewardPoints,
+      requesterPhone: requesterPhone.trim() || undefined,
+      requesterContactNotes: requesterNotes.trim() || undefined,
+      imageUrl: selectedImage || undefined,
     });
 
     setCreateModalVisible(false);
     setTitle('');
     setDescription('');
-    setSuccessPoints(5);
+    setSelectedImage('');
     setSuccessTitle('Bantuan Berjaya Disiarkan!');
-    setSuccessMsg(`Posting "${title}" anda kini dapat dilihat oleh jiran dalam komuniti ${currentUser.location}.`);
+    setSuccessMsg(`Posting "${title}" anda kini dapat dilihat oleh jiran sekitar ${currentUser.location}.`);
     setSuccessVisible(true);
   };
 
   const handleFulfillHelp = (req: HelpRequest) => {
-    const pts = fulfillRequest(req.id, currentUser.name);
-    addGreenPoints(
-      pts,
-      `${currentUser.name} membantu jiran: ${req.title}`,
-      `Bantuan kepada ${req.requesterName} diselesaikan dengan jayanya!`,
-      'help'
-    );
+    fulfillRequest(req.id, currentUser.name);
     setSelectedRequest(null);
-    setSuccessPoints(pts);
-    setSuccessTitle('Terima Kasih Atas Bantuan Anda!');
-    setSuccessMsg(`Hebat! Anda telah bersetuju membantu ${req.requesterName}. Hubungan kejiranan semakin erat dan anda menerima +${pts} Mata Hijau.`);
+    setSuccessTitle('Terima Kasih!');
+    setSuccessMsg(`Hebat! Anda telah menyatakan persetujuan untuk membantu ${req.requesterName}. Sila hubungi jiran melalui sembang atau WhatsApp untuk penyelarasan.`);
     setSuccessVisible(true);
+  };
+
+  const handleOpenWhatsApp = (phone?: string) => {
+    if (!phone) return;
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const intlPhone = cleanPhone.startsWith('0') ? '6' + cleanPhone : cleanPhone;
+    Linking.openURL(`whatsapp://send?phone=${intlPhone}&text=${encodeURIComponent(`Salam, saya dari NeighbourLoop mengenai "${selectedRequest?.title}".`)}`).catch(() => {
+      Linking.openURL(`https://wa.me/${intlPhone}`);
+    });
   };
 
   return (
@@ -177,14 +194,19 @@ export default function HelpScreen() {
                 className="bg-white p-4 rounded-2xl mb-3 border border-gray-100 shadow-sm"
               >
                 <View className="flex-row justify-between items-start mb-1.5">
-                  <View className="bg-purple-50 px-2.5 py-0.5 rounded-md self-start">
+                  <View className="bg-purple-50 px-2.5 py-0.5 rounded-md self-start border border-purple-100">
                     <Text className="text-[10px] font-bold text-purple-700">{req.category}</Text>
                   </View>
-                  <View className="flex-row items-center bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-                    <Sparkles size={12} color="#16a34a" />
-                    <Text className="text-[10px] font-bold text-green-700 ml-1">+{req.rewardPoints} pts</Text>
+                  <View className={`px-2 py-0.5 rounded-full ${req.status === 'Open' ? 'bg-emerald-50' : 'bg-gray-100'}`}>
+                    <Text className={`text-[10px] font-bold ${req.status === 'Open' ? 'text-emerald-700' : 'text-gray-500'}`}>
+                      {req.status === 'Open' ? 'Dibuka' : 'Selesai'}
+                    </Text>
                   </View>
                 </View>
+
+                {req.imageUrl ? (
+                  <Image source={{ uri: req.imageUrl }} className="w-full h-32 rounded-xl mb-2 bg-gray-100 object-cover" />
+                ) : null}
 
                 <Text className="text-base font-bold text-gray-900 mb-1">{req.title}</Text>
                 <Text className="text-gray-500 text-xs mb-3" numberOfLines={2}>
@@ -198,6 +220,7 @@ export default function HelpScreen() {
                     </View>
                     <Text className="text-xs text-gray-700 font-semibold">{req.requesterName}</Text>
                   </View>
+
                   <View className="flex-row items-center">
                     <MapPin size={12} color="#9ca3af" />
                     <Text className="text-gray-400 text-xs ml-0.5">{req.distance} km</Text>
@@ -214,6 +237,8 @@ export default function HelpScreen() {
       <TouchableOpacity
         onPress={() => {
           setNewType(activeTab);
+          setRequesterPhone(currentUser.phone || '');
+          setRequesterNotes(currentUser.contactNotes || '');
           setCreateModalVisible(true);
         }}
         className="absolute bottom-6 right-6 bg-purple-700 px-5 py-3.5 rounded-full flex-row items-center shadow-lg shadow-purple-900/40"
@@ -226,7 +251,7 @@ export default function HelpScreen() {
       {selectedRequest && (
         <Modal visible={true} transparent animationType="slide">
           <View className="flex-1 justify-end bg-black/50">
-            <View className="bg-white rounded-t-3xl p-6">
+            <View className="bg-white rounded-t-3xl p-6 max-h-[88%]">
               <View className="flex-row justify-between items-center mb-3">
                 <View className="bg-purple-100 px-3 py-1 rounded-full">
                   <Text className="text-purple-800 font-bold text-xs">{selectedRequest.category}</Text>
@@ -236,42 +261,73 @@ export default function HelpScreen() {
                 </TouchableOpacity>
               </View>
 
-              <Text className="text-xl font-bold text-gray-900 mb-2">{selectedRequest.title}</Text>
-              <Text className="text-gray-600 text-sm mb-4 leading-5">{selectedRequest.description}</Text>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {selectedRequest.imageUrl ? (
+                  <Image source={{ uri: selectedRequest.imageUrl }} className="w-full h-40 rounded-2xl mb-3 bg-gray-100" />
+                ) : null}
 
-              <View className="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-100">
-                <Text className="text-xs text-gray-400 font-semibold uppercase mb-1">
-                  {selectedRequest.type === 'Permintaan' ? 'Pemohon' : 'Pemberi Bantuan'}
-                </Text>
-                <Text className="text-sm font-bold text-gray-800">{selectedRequest.requesterName}</Text>
-                <View className="flex-row items-center mt-1">
-                  <MapPin size={14} color="#16a34a" />
-                  <Text className="text-xs text-gray-600 ml-1">
-                    {selectedRequest.distance} km dari lokasi anda
+                <Text className="text-xl font-bold text-gray-900 mb-2">{selectedRequest.title}</Text>
+                <Text className="text-gray-600 text-sm mb-4 leading-5">{selectedRequest.description}</Text>
+
+                <View className="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-200">
+                  <Text className="text-xs text-gray-400 font-semibold uppercase mb-1">
+                    {selectedRequest.type === 'Permintaan' ? 'Pemohon Bantuan' : 'Pemberi Bantuan'}
                   </Text>
-                </View>
-              </View>
+                  <Text className="text-sm font-bold text-gray-800">{selectedRequest.requesterName}</Text>
+                  <View className="flex-row items-center mt-1">
+                    <MapPin size={14} color="#16a34a" />
+                    <Text className="text-xs text-gray-600 ml-1">
+                      {selectedRequest.distance} km dari lokasi anda
+                    </Text>
+                  </View>
 
-              <View className="bg-green-50 p-3 rounded-2xl mb-5 flex-row items-center justify-between border border-green-200">
-                <Text className="text-green-800 font-bold text-xs">Ganjaran Mata Hijau Selesai:</Text>
-                <Text className="text-green-700 font-black text-sm">+{selectedRequest.rewardPoints} pts</Text>
-              </View>
-
-              {selectedRequest.status === 'Completed' ? (
-                <View className="py-3.5 rounded-2xl bg-gray-100 items-center">
-                  <Text className="text-gray-400 font-bold text-sm">Bantuan ini telah diselesaikan</Text>
+                  {/* Contact details */}
+                  {selectedRequest.requesterPhone ? (
+                    <View className="mt-2 pt-2 border-t border-gray-200 flex-row justify-between items-center">
+                      <View>
+                        <Text className="text-[10px] text-gray-400 uppercase font-semibold">No. WhatsApp</Text>
+                        <Text className="text-xs font-bold text-gray-800">{selectedRequest.requesterPhone}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleOpenWhatsApp(selectedRequest.requesterPhone)}
+                        className="bg-green-600 px-3 py-1.5 rounded-xl flex-row items-center"
+                      >
+                        <Phone size={12} color="white" />
+                        <Text className="text-white text-xs font-bold ml-1">WhatsApp</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
                 </View>
-              ) : (
+
+                {/* Direct In-App Chat Button */}
                 <TouchableOpacity
-                  onPress={() => handleFulfillHelp(selectedRequest)}
-                  className="w-full bg-purple-700 py-4 rounded-2xl flex-row justify-center items-center shadow-md shadow-purple-900/30"
+                  onPress={() => setChatModalVisible(true)}
+                  className="w-full bg-purple-700 py-3.5 rounded-2xl flex-row justify-center items-center shadow-md shadow-purple-900/30 mb-2.5"
                 >
-                  <HeartHandshake size={20} color="white" />
+                  <MessageSquare size={18} color="white" />
                   <Text className="text-white font-bold text-base ml-2">
-                    {selectedRequest.type === 'Permintaan' ? 'Bantu Jiran Ini Sekarang' : 'Terima Tawaran Bantuan'}
+                    Mesej Jiran (Chatbox)
                   </Text>
                 </TouchableOpacity>
-              )}
+
+                {selectedRequest.status === 'Completed' ? (
+                  <View className="py-3 rounded-2xl bg-gray-100 items-center">
+                    <Text className="text-gray-500 font-bold text-xs">
+                      Bantuan ini telah diselesaikan oleh {selectedRequest.fulfilledBy}
+                    </Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => handleFulfillHelp(selectedRequest)}
+                    className="w-full bg-emerald-600 py-3 rounded-2xl flex-row justify-center items-center mb-4"
+                  >
+                    <CheckCircle2 size={16} color="white" />
+                    <Text className="text-white font-bold text-sm ml-1.5">
+                      Tandakan Bantuan Selesai
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -280,7 +336,7 @@ export default function HelpScreen() {
       {/* Create Help Item Modal */}
       <Modal visible={createModalVisible} transparent animationType="slide">
         <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white rounded-t-3xl p-6 max-h-[90%]">
+          <View className="bg-white rounded-t-3xl p-6 max-h-[92%]">
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-xl font-bold text-gray-900">+ Buat {newType}</Text>
               <TouchableOpacity onPress={() => setCreateModalVisible(false)}>
@@ -313,9 +369,18 @@ export default function HelpScreen() {
                 </TouchableOpacity>
               </View>
 
+              {/* Image Picker for Help Items */}
+              <ImagePickerButton
+                title="Gambar Barang / Lokasi (Pilihan)"
+                selectedImageUri={selectedImage}
+                onImageSelected={setSelectedImage}
+                presetImages={PRESET_IMAGES}
+              />
+
               <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Tajuk Bantuan</Text>
               <TextInput
                 placeholder={newType === 'Permintaan' ? 'Contoh: Pinjam tangga lipat 1 jam' : 'Contoh: Sedia tumpang beli barang dapur'}
+                placeholderTextColor="#9ca3af"
                 value={title}
                 onChangeText={setTitle}
                 className="bg-gray-100 rounded-xl px-4 py-3 mb-3 text-sm text-gray-900"
@@ -341,6 +406,7 @@ export default function HelpScreen() {
               <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Penerangan Lanjut</Text>
               <TextInput
                 placeholder="Nyatakan bila diperlukan, lokasi atau syarat dengan jelas..."
+                placeholderTextColor="#9ca3af"
                 multiline
                 numberOfLines={3}
                 value={description}
@@ -348,30 +414,31 @@ export default function HelpScreen() {
                 className="bg-gray-100 rounded-xl px-4 py-3 mb-3 text-sm text-gray-900"
               />
 
-              <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Ganjaran Mata Hijau Ditawarkan</Text>
-              <View className="flex-row mb-5">
-                {[15, 20, 30, 50].map((pts) => (
-                  <TouchableOpacity
-                    key={pts}
-                    onPress={() => setRewardPoints(pts)}
-                    className={`flex-1 mr-2 py-2 rounded-xl border items-center ${
-                      rewardPoints === pts ? 'bg-purple-700 border-purple-700' : 'bg-gray-100 border-transparent'
-                    }`}
-                  >
-                    <Text className={`text-xs font-bold ${rewardPoints === pts ? 'text-white' : 'text-gray-700'}`}>
-                      {pts} pts
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">No. Telefon / WhatsApp (Pilihan)</Text>
+              <TextInput
+                placeholder="Contoh: 012-3456789"
+                placeholderTextColor="#9ca3af"
+                keyboardType="phone-pad"
+                value={requesterPhone}
+                onChangeText={setRequesterPhone}
+                className="bg-gray-100 rounded-xl px-4 py-3 mb-3 text-sm text-gray-900"
+              />
+
+              <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Nota Perhubungan (Pilihan)</Text>
+              <TextInput
+                placeholder="Contoh: Boleh WhatsApp atau mesej aplikasi."
+                placeholderTextColor="#9ca3af"
+                value={requesterNotes}
+                onChangeText={setRequesterNotes}
+                className="bg-gray-100 rounded-xl px-4 py-3 mb-5 text-sm text-gray-900"
+              />
 
               <TouchableOpacity
                 onPress={handleCreateRequest}
-                className="w-full bg-purple-700 py-4 rounded-2xl items-center shadow-md shadow-purple-900/30"
+                className="w-full bg-purple-700 py-4 rounded-2xl items-center shadow-md shadow-purple-900/30 mb-6"
               >
                 <Text className="text-white font-bold text-base">Siarkan Kepada Jiran</Text>
               </TouchableOpacity>
-              <View className="h-6" />
             </ScrollView>
           </View>
         </View>
@@ -380,11 +447,27 @@ export default function HelpScreen() {
       {/* Success Modal */}
       <SuccessModal
         visible={successVisible}
-        points={successPoints}
         title={successTitle}
         message={successMsg}
         onClose={() => setSuccessVisible(false)}
       />
+
+      {/* Chat Modal with Requester */}
+      {selectedRequest && (
+        <ChatModal
+          visible={chatModalVisible}
+          onClose={() => setChatModalVisible(false)}
+          recipient={{
+            id: selectedRequest.requesterId,
+            name: selectedRequest.requesterName,
+            phone: selectedRequest.requesterPhone,
+          }}
+          itemContext={{
+            title: selectedRequest.title,
+            category: 'Help Nearby',
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }

@@ -140,3 +140,4 @@ export default function EditContactModal({ visible, onClose }: EditContactModalP
     </Modal>
   );
 }
+

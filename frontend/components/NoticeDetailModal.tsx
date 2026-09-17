@@ -99,3 +99,4 @@ export default function NoticeDetailModal({ notice, onClose }: NoticeDetailModal
     </Modal>
   );
 }
+

@@ -29,3 +29,4 @@ export const useNoticeStore = create<NoticeState>((set) => ({
     set((state) => ({ notices: state.notices.filter((n) => n.id !== id) }));
   },
 }));
+

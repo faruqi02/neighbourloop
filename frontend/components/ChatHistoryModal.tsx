@@ -120,3 +120,4 @@ export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalP
     </Modal>
   );
 }
+

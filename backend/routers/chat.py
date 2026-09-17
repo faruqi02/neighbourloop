@@ -30,3 +30,4 @@ def send_chat_message(data: SendMessageRequest):
         conv.lastMessage = data.text
         conv.lastMessageTime = "Baru sahaja"
     return new_msg
+

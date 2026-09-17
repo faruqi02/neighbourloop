@@ -40,3 +40,4 @@ def delete_community_notice(notice_id: str):
             del NOTICES_DB[i]
             return {"success": True, "message": "Notice deleted successfully"}
     raise HTTPException(status_code=404, detail="Notice not found")
+

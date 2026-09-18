@@ -13,7 +13,7 @@ echo.
 :: ------------------------------------------------------------------------------
 :: 1. Semak & Lancarkan Backend (FastAPI)
 :: ------------------------------------------------------------------------------
-echo [1/2] Memulakan Backend (FastAPI)...
+echo [1/3] Memulakan Backend (FastAPI)...
 
 if not exist "%~dp0backend\venv\Scripts\activate.bat" (
     echo [AMARAN] venv tidak dijumpai dalam folder backend. Sedang membina venv...
@@ -32,23 +32,33 @@ timeout /t 2 /nobreak >nul
 :: ------------------------------------------------------------------------------
 :: 2. Semak & Lancarkan Frontend (Expo React Native)
 :: ------------------------------------------------------------------------------
-echo [2/2] Memulakan Frontend (Expo Metro Bundler)...
+echo [2/3] Memulakan Frontend (Expo Metro Bundler)...
 
 start "NeighbourLoop - Frontend (Expo)" cmd /k "cd /d "%~dp0frontend" && echo ======================================== && echo  NeighbourLoop Frontend (Expo) is Starting... && echo  Imbas Kod QR dengan aplikasi Expo Go && echo ======================================== && echo. && npx expo start"
 
+:: Tunggu 2 saat sebelum melancarkan admin website
+timeout /t 2 /nobreak >nul
+
+:: ------------------------------------------------------------------------------
+:: 3. Semak & Lancarkan Admin Website (React/Vite)
+:: ------------------------------------------------------------------------------
+echo [3/3] Memulakan Admin Website (React/Vite)...
+
+start "NeighbourLoop - Admin Website" cmd /k "cd /d "%~dp0website" && echo ======================================== && echo  NeighbourLoop Admin Website (Vite) is Starting... && echo  - URL: http://localhost:5173 && echo ======================================== && echo. && npm run dev -- --host"
+
 echo.
 echo ==============================================================================
-echo [BERJAYA] Kedua-dua Backend dan Frontend telah dilancarkan di tetingkap berasingan!
+echo [BERJAYA] Ketiga-tiga servis (Backend, Frontend, dan Admin Website) telah dilancarkan!
 echo ==============================================================================
 echo.
-echo  * Backend API:  http://127.0.0.1:8000
-echo  * Swagger Docs: http://127.0.0.1:8000/docs
-echo  * Frontend:     Lihat tetingkap Expo untuk kod QR dan log
+echo  * Backend API:   http://127.0.0.1:8000
+echo  * Swagger Docs:  http://127.0.0.1:8000/docs
+echo  * Frontend:      Lihat tetingkap Expo untuk kod QR dan log
+echo  * Admin Website: http://localhost:5173
 echo.
 echo Tips:
-echo  - Biarkan kedua-dua tetingkap terbuka semasa membuat ujian / demo.
+echo  - Biarkan kesemua tetingkap terbuka semasa membuat ujian / demo.
 echo  - Untuk menghentikan servis, tekan Ctrl + C dalam tetingkap masing-masing.
 echo.
 echo Tetingkap launcher ini boleh ditutup pada bila-bila masa.
 pause
-

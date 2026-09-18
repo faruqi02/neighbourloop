@@ -9,11 +9,12 @@ interface Props {
 }
 
 const PRESET_LOCATIONS = [
-  'Taman Melati, Johor Bahru',
-  'Kolej Rahman Putra, UTM',
-  'Taman Perling, Johor Bahru',
-  'Taman Universiti, Skudai',
-  'Bandar Baru Uda, Johor Bahru',
+  'Behrang Stesen',
+  'Behrang Sentral',
+  'Behrang Residen',
+  'Behrang 2020',
+  'Tanjung Malim',
+  'Slim River',
 ];
 
 const RADIUS_OPTIONS = [2, 5, 10, 20];

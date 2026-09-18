@@ -10,69 +10,8 @@ from schemas import (
     ChatMessage
 )
 
-# Current demo users (including Admin & SV)
-USERS_DB: Dict[str, User] = {
-    "u1": User(
-        id="u1",
-        name="Aisyah",
-        email="aisyah@example.com",
-        phone="012-3456789",
-        telegram="@aisyah_melati",
-        contactNotes="Boleh WhatsApp atau call bila-bila masa.",
-        preferredContactMethod="WhatsApp",
-        location="Taman Melati, Johor Bahru",
-        radiusKm=5,
-        avatarUrl="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
-        role="User",
-        status="Aktif",
-        joinedDate="Januari 2026"
-    ),
-    "u2": User(
-        id="u2",
-        name="Abu Bakar",
-        email="abu@utm.my",
-        phone="013-9876543",
-        telegram="@abu_utm",
-        contactNotes="Pelajar UTM. WhatsApp waktu petang atau malam sahaja.",
-        preferredContactMethod="Chat Aplikasi",
-        location="Kolej Rahman Putra, UTM",
-        radiusKm=5,
-        avatarUrl="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
-        role="User",
-        status="Aktif",
-        joinedDate="Februari 2026"
-    ),
-    "u3": User(
-        id="u3",
-        name="Siti Aminah",
-        email="siti@example.com",
-        phone="017-1122334",
-        telegram="@sitiaminah_jb",
-        contactNotes="Suri rumah. Call atau WhatsApp sebelum jam 8 malam.",
-        preferredContactMethod="WhatsApp",
-        location="Taman Perling, Johor Bahru",
-        radiusKm=10,
-        avatarUrl="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
-        role="User",
-        status="Aktif",
-        joinedDate="Januari 2026"
-    ),
-    "u_admin": User(
-        id="u_admin",
-        name="Dr. Faruqi (Admin & SV)",
-        email="admin@neighbourloop.org",
-        phone="019-8877665",
-        telegram="@admin_neighbourloop",
-        contactNotes="Penyelia & Pentadbir Platform Komuniti NeighbourLoop.",
-        preferredContactMethod="Semua",
-        location="Pusat Pentadbiran, UTM Skudai",
-        radiusKm=20,
-        avatarUrl="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
-        role="Admin",
-        status="Aktif",
-        joinedDate="Disember 2025"
-    )
-}
+# Current demo users
+USERS_DB: Dict[str, User] = {}
 
 LISTINGS_DB: List[Listing] = [
     Listing(

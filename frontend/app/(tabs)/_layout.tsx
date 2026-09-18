@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Image } from 'react-native';
-import { Home, List, HeartHandshake, User } from 'lucide-react-native';
+import { Home, List, HeartHandshake, User, MessageCircle } from 'lucide-react-native';
 
 const recycleIcon = require('../../images/recycle_icon.png');
 
@@ -21,35 +21,22 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Menu',
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="marketplace"
+        name="explorer"
         options={{
-          title: 'Marketplace',
+          title: 'Explorer',
           tabBarIcon: ({ color }) => <List size={24} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="recycle"
+        name="chat"
         options={{
-          title: 'Donate & Recycle',
-          tabBarIcon: ({ focused }) => (
-            <Image
-              source={recycleIcon}
-              style={{ width: 26, height: 26, opacity: focused ? 1 : 0.6 }}
-              resizeMode="contain"
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="help"
-        options={{
-          title: 'Help Nearby',
-          tabBarIcon: ({ color }) => <HeartHandshake size={24} color={color} />,
+          title: 'Chat',
+          tabBarIcon: ({ color }) => <MessageCircle size={24} color={color} />,
         }}
       />
       <Tabs.Screen

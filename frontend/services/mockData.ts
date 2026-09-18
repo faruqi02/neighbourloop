@@ -17,7 +17,7 @@ export const mockUsers: User[] = [
     telegram: '@aisyah_melati',
     contactNotes: 'Boleh WhatsApp atau call bila-bila masa.',
     preferredContactMethod: 'WhatsApp',
-    location: 'Taman Melati, Johor Bahru',
+    location: 'Behrang Stesen',
     radiusKm: 5,
     avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
     role: 'User',

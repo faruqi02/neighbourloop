@@ -3,7 +3,7 @@ import { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string) => void;
+  login: (userData: User) => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -13,18 +13,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = (email: string) => {
-    // Mock login
-    setUser({
-      id: '1',
-      name: 'Dr. Faruqi',
-      email: 'admin@neighbourloop.org',
-      phone: '0123456789',
-      neighborhood: 'Taman Universiti',
-      radius_km: 10,
-      role: 'Admin',
-      status: 'Aktif'
-    });
+  const login = (userData: User) => {
+    setUser(userData);
   };
 
   const logout = () => setUser(null);

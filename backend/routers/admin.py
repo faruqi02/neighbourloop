@@ -6,7 +6,7 @@ from schemas import User, AdminStatsResponse
 from database import USERS_DB, LISTINGS_DB, DONATIONS_DB, HELP_REQUESTS_DB, RECYCLE_CENTERS_DB, NOTICES_DB
 
 router = APIRouter(prefix="/admin", tags=["Supervisor & Admin Dashboard"])
-APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkqZXmoM0WFknW5vVG60UAf_D3ZEOGyjtZuHbPkEs07GudJbZIA4ieukV60WIIqx0P/exec"
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwitujRlYaYoxpd7UzD5Ieffo87pOarz_vTXwo9_mSPvf0cjcj9OHHUCIfUEQdjUQDU/exec"
 
 @router.get("/dashboard", response_model=AdminStatsResponse)
 async def get_admin_dashboard_metrics():

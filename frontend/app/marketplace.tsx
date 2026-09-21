@@ -11,12 +11,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Plus, MapPin, X, MessageCircle, Phone, Tag, CheckCircle2 } from 'lucide-react-native';
-import { useMarketStore } from '../../store/useMarketStore';
-import { useUserStore } from '../../store/useUserStore';
-import { Listing } from '../../types';
-import SuccessModal from '../../components/SuccessModal';
-import ImagePickerButton from '../../components/ImagePickerButton';
-import ChatModal from '../../components/ChatModal';
+import { useMarketStore } from '../store/useMarketStore';
+import { useUserStore } from '../store/useUserStore';
+import { Listing } from '../types';
+import SuccessModal from '../components/SuccessModal';
+import ImagePickerButton from '../components/ImagePickerButton';
+import ChatModal from '../components/ChatModal';
 
 const CATEGORIES = ['Semua', 'Perabot', 'Elektronik', 'Pakaian', 'Lain-lain'];
 const PRESET_IMAGES = [
@@ -30,6 +30,8 @@ const PRESET_IMAGES = [
 export default function MarketplaceScreen() {
   const { listings, addListing } = useMarketStore();
   const { currentUser } = useUserStore();
+
+  if (!currentUser) return null;
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');

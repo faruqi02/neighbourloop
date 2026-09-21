@@ -3,13 +3,17 @@ import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShoppingCart, HeartHandshake, MapPin } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useListingStore } from '../../store/useListingStore';
+import { useMarketStore } from '../../store/useMarketStore';
 import { useHelpStore } from '../../store/useHelpStore';
+import { useUserStore } from '../../store/useUserStore';
 
 export default function ExplorerScreen() {
   const router = useRouter();
-  const { listings } = useListingStore();
+  const { listings } = useMarketStore();
   const { requests } = useHelpStore();
+  const { currentUser } = useUserStore();
+
+  if (!currentUser) return null;
 
   return (
     <SafeAreaView className="flex-1 bg-white">

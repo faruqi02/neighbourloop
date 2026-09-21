@@ -3,9 +3,10 @@ import { User } from '../types';
 import { mockUsers } from '../services/mockData';
 
 interface UserState {
-  currentUser: User;
+  currentUser: User | null;
   allUsers: User[];
   setCurrentUser: (user: User) => void;
+  logout: () => void;
   switchUserById: (userId: string) => void;
   updateLocation: (location: string, radiusKm: number) => void;
   updateContactDetails: (
@@ -19,10 +20,11 @@ interface UserState {
 }
 
 export const useUserStore = create<UserState>((set) => ({
-  currentUser: mockUsers[0],
+  currentUser: null,
   allUsers: mockUsers,
 
   setCurrentUser: (user) => set({ currentUser: user }),
+  logout: () => set({ currentUser: null }),
 
   switchUserById: (userId) => set((state) => {
     const target = state.allUsers.find((u) => u.id === userId);

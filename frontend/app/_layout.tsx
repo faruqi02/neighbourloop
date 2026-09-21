@@ -45,9 +45,24 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const { currentUser } = require('../store/useUserStore').useUserStore();
+  const segments = require('expo-router').useSegments();
+  const router = require('expo-router').useRouter();
+
+  useEffect(() => {
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+
+    if (!currentUser && !inAuthGroup) {
+      router.replace('/login');
+    } else if (currentUser && inAuthGroup) {
+      router.replace('/(tabs)/');
+    }
+  }, [currentUser, segments]);
 
   return (
     <Stack>
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="marketplace" options={{ headerShown: false }} />
       <Stack.Screen name="recycle" options={{ headerShown: false }} />

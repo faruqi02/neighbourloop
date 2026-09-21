@@ -52,13 +52,20 @@ export default function ChatModal({
   const [inputText, setInputText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const ctxTitle = itemContext?.title;
+  const ctxPrice = itemContext?.price;
+  const ctxCategory = itemContext?.category;
+
   useEffect(() => {
     if (visible && recipient.id) {
-      const convId = getOrCreateConversation(recipient, itemContext);
+      const convId = getOrCreateConversation(
+        recipient, 
+        ctxTitle ? { title: ctxTitle, price: ctxPrice, category: ctxCategory } : undefined
+      );
       setConversationId(convId);
       markAsRead(convId);
     }
-  }, [visible, recipient.id, itemContext]);
+  }, [visible, recipient.id, ctxTitle, ctxPrice, ctxCategory]);
 
   const currentConv = conversations.find((c) => c.id === conversationId);
   const messages = currentConv?.messages || [];

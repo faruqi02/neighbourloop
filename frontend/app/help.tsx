@@ -21,12 +21,12 @@ import {
   MessageSquare, 
   CheckCircle2 
 } from 'lucide-react-native';
-import { useHelpStore } from '../../store/useHelpStore';
-import { useUserStore } from '../../store/useUserStore';
-import { HelpRequest } from '../../types';
-import SuccessModal from '../../components/SuccessModal';
-import ImagePickerButton from '../../components/ImagePickerButton';
-import ChatModal from '../../components/ChatModal';
+import { useHelpStore } from '../store/useHelpStore';
+import { useUserStore } from '../store/useUserStore';
+import { HelpRequest } from '../types';
+import SuccessModal from '../components/SuccessModal';
+import ImagePickerButton from '../components/ImagePickerButton';
+import ChatModal from '../components/ChatModal';
 
 const CATEGORIES = ['Semua', 'Pinjam Barang', 'Khidmat/Tenaga', 'Kemahiran', 'Lain-lain'];
 const PRESET_IMAGES = [
@@ -38,6 +38,8 @@ const PRESET_IMAGES = [
 export default function HelpScreen() {
   const { requests, addRequest, fulfillRequest } = useHelpStore();
   const { currentUser } = useUserStore();
+
+  if (!currentUser) return null;
 
   const [activeTab, setActiveTab] = useState<'Permintaan' | 'Tawaran'>('Permintaan');
   const [selectedCategory, setSelectedCategory] = useState('Semua');

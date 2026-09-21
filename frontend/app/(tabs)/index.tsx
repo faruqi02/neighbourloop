@@ -30,6 +30,8 @@ export default function HomeDashboard() {
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<CommunityNotice | null>(null);
 
+  if (!currentUser) return null;
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Top Location Bar */}

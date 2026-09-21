@@ -23,14 +23,14 @@ import {
   MessageCircle, 
   CheckCircle2 
 } from 'lucide-react-native';
-import { useRecycleStore } from '../../store/useRecycleStore';
-import { useUserStore } from '../../store/useUserStore';
-import { SmartRecommendation, RecycleCenter, DonationItem } from '../../types';
-import SuccessModal from '../../components/SuccessModal';
-import ImagePickerButton from '../../components/ImagePickerButton';
-import ChatModal from '../../components/ChatModal';
+import { useRecycleStore } from '../store/useRecycleStore';
+import { useUserStore } from '../store/useUserStore';
+import { SmartRecommendation, RecycleCenter, DonationItem } from '../types';
+import SuccessModal from '../components/SuccessModal';
+import ImagePickerButton from '../components/ImagePickerButton';
+import ChatModal from '../components/ChatModal';
 
-const recycleIcon = require('../../images/recycle_icon.png');
+const recycleIcon = require('../images/recycle_icon.png');
 
 const RECYCLE_CATEGORIES = [
   'Pakaian & Tekstil',
@@ -53,6 +53,8 @@ const PRESET_ITEMS = [
 export default function RecycleScreen() {
   const { centers, donations, addDonation, claimDonation, getSmartRecommendation } = useRecycleStore();
   const { currentUser } = useUserStore();
+
+  if (!currentUser) return null;
 
   const [activeSubTab, setActiveSubTab] = useState<'SmartEngine' | 'Directory' | 'ClaimFeed'>('SmartEngine');
 

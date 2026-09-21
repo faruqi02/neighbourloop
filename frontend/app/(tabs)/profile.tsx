@@ -47,6 +47,8 @@ export default function ProfileScreen() {
   const [chatHistoryVisible, setChatHistoryVisible] = useState(false);
   const [adminDashboardVisible, setAdminDashboardVisible] = useState(false);
 
+  if (!currentUser) return null;
+
   const myListingsCount = listings.filter((l) => l.sellerId === currentUser.id).length;
   const myHelpCount = requests.filter((r) => r.requesterId === currentUser.id || r.fulfilledBy === currentUser.name).length;
   const myDonationCount = donations.filter((d) => d.donorId === currentUser.id).length;

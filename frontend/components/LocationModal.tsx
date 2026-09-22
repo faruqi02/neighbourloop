@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView } from 'react-native';
-import { MapPin, Check, X } from 'lucide-react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { MapPin, Check, X, Navigation } from 'lucide-react-native';
 import { useUserStore } from '../store/useUserStore';
+import * as Location from 'expo-location';
+import { apiRequest } from '../services/api';
 
 interface Props {
   visible: boolean;
@@ -24,9 +26,48 @@ export default function LocationModal({ visible, onClose }: Props) {
   const [selectedLoc, setSelectedLoc] = useState(currentUser.location);
   const [selectedRadius, setSelectedRadius] = useState(currentUser.radiusKm || 5);
 
-  const handleSave = () => {
+  const [detecting, setDetecting] = useState(false);
+
+  const handleSave = async () => {
     updateLocation(selectedLoc, selectedRadius);
+    
+    if (currentUser?.id) {
+      try {
+        await apiRequest(`/admin/users/${currentUser.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ neighborhood: selectedLoc })
+        });
+      } catch(e) {
+        console.error('Failed to save location', e);
+      }
+    }
     onClose();
+  };
+
+  const handleDetectLocation = async () => {
+    setDetecting(true);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Keizinan lokasi diperlukan.');
+        setDetecting(false);
+        return;
+      }
+      let loc = await Location.getCurrentPositionAsync({});
+      let geocode = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude
+      });
+      if (geocode && geocode.length > 0) {
+        const p = geocode[0];
+        setSelectedLoc(p.district || p.city || p.subregion || p.region || 'Lokasi Semasa');
+      }
+    } catch (error) {
+      alert('Gagal mengesan lokasi.');
+    } finally {
+      setDetecting(false);
+    }
   };
 
   return (
@@ -42,6 +83,20 @@ export default function LocationModal({ visible, onClose }: Props) {
               <X size={22} color="#6b7280" />
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity 
+            onPress={handleDetectLocation}
+            className="flex-row items-center justify-center bg-green-100 p-3 rounded-xl mb-4 border border-green-200"
+          >
+            {detecting ? (
+              <ActivityIndicator color="#16a34a" size="small" />
+            ) : (
+              <>
+                <Navigation size={18} color="#16a34a" />
+                <Text className="ml-2 font-bold text-green-700">Kesan Lokasi Semasa (GPS)</Text>
+              </>
+            )}
+          </TouchableOpacity>
 
           <Text className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wide">
             Komuniti Kejiranan / Kampus

@@ -83,7 +83,7 @@ export default function HomeDashboard() {
               </Text>
             </View>
             <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center p-2">
-              <Image source={recycleIcon} className="w-11 h-11" resizeMode="contain" />
+              <Image source={recycleIcon} style={{ width: 44, height: 44 }} className="w-11 h-11" resizeMode="contain" />
             </View>
           </View>
         </View>
@@ -109,7 +109,7 @@ export default function HomeDashboard() {
             className="w-[31%] bg-green-50/90 rounded-2xl p-3.5 items-center border border-green-100 shadow-sm"
           >
             <View className="w-12 h-12 rounded-2xl bg-green-600 items-center justify-center mb-2 shadow-sm shadow-green-600/30">
-              <Image source={recycleIcon} className="w-8 h-8" resizeMode="contain" />
+              <Image source={recycleIcon} style={{ width: 32, height: 32 }} className="w-8 h-8" resizeMode="contain" />
             </View>
             <Text className="text-xs font-bold text-green-900 text-center">Donate & Recycle</Text>
             <Text className="text-[10px] text-green-700 text-center mt-0.5">Derma & Kitar</Text>

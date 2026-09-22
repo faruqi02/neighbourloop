@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types';
 import { mockUsers } from '../services/mockData';
 
@@ -19,7 +21,9 @@ interface UserState {
   updateUserStatus: (userId: string, status: 'Aktif' | 'Digantung') => void;
 }
 
-export const useUserStore = create<UserState>((set) => ({
+export const useUserStore = create<UserState>()(
+  persist(
+    (set) => ({
   currentUser: null,
   allUsers: mockUsers,
 
@@ -63,6 +67,13 @@ export const useUserStore = create<UserState>((set) => ({
 
   updateUserStatus: (userId, status) => set((state) => ({
     allUsers: state.allUsers.map((u) => (u.id === userId ? { ...u, status } : u)),
-    currentUser: state.currentUser.id === userId ? { ...state.currentUser, status } : state.currentUser,
+    currentUser: state.currentUser?.id === userId ? { ...state.currentUser, status } : state.currentUser,
   })),
-}));
+    }),
+    {
+      name: 'neighbourloop-user-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ currentUser: state.currentUser }), // Only persist currentUser
+    }
+  )
+);

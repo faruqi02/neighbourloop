@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUserStore } from '../store/useUserStore';
 import { LogIn, Key, Mail, Recycle, Eye, EyeOff } from 'lucide-react-native';
+import Constants from 'expo-constants';
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
@@ -34,7 +35,13 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://192.168.68.178:8000/auth/login', {
+      let backendUrl = 'http://192.168.1.165:8000';
+      const debuggerHost = Constants.expoConfig?.hostUri;
+      if (debuggerHost) {
+        backendUrl = `http://${debuggerHost.split(':')[0]}:8000`;
+      }
+
+      const response = await fetch(`${backendUrl}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier, password }),

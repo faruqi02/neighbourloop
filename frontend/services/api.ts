@@ -1,5 +1,14 @@
 // API Client for NeighbourLoop Backend
-const API_BASE_URL = 'http://127.0.0.1:8000';
+import Constants from 'expo-constants';
+
+// Dapat IP peranti host secara automatik menggunakan expo-constants
+let API_BASE_URL = 'http://192.168.1.165:8000'; // Default fallback
+
+const debuggerHost = Constants.expoConfig?.hostUri;
+if (debuggerHost) {
+  const ip = debuggerHost.split(':')[0];
+  API_BASE_URL = `http://${ip}:8000`;
+}
 
 export async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
   try {

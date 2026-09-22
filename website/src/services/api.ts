@@ -1,6 +1,6 @@
 import { AdminStats, User } from '../types';
 
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = `http://${window.location.hostname}:8000`;
 
 export const api = {
   getStats: async (): Promise<AdminStats> => {
@@ -52,6 +52,23 @@ export const api = {
     });
     if (!res.ok) throw new Error('Network response was not ok');
     return res.json();
+  },
+
+  updateUser: async (id: string, userData: any): Promise<any> => {
+    const res = await fetch(`${API_URL}/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    if (!res.ok) throw new Error('Network response was not ok');
+    return res.json();
+  },
+
+  deleteUser: async (id: string): Promise<any> => {
+    const res = await fetch(`${API_URL}/admin/users/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Network response was not ok');
+    return res.json();
   }
 };
-

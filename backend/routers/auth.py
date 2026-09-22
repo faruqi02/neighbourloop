@@ -22,8 +22,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 @router.post("/login", response_model=User)
 def login(data: LoginRequest):
     try:
-        res = requests.get(f"{APPS_SCRIPT_URL}?action=get_all", timeout=30.0)
-        users = res.json().get("users", [])
+        res = requests.get(f"{APPS_SCRIPT_URL}?sheet=Users", timeout=60.0)
+        users = res.json()
+        if not isinstance(users, list):
+            users = []
     except Exception as e:
         print("Error fetching users for login:", e)
         raise HTTPException(status_code=500, detail="Database unavailable")
@@ -61,18 +63,38 @@ def login(data: LoginRequest):
 
     raise HTTPException(status_code=404, detail="Pengguna tidak dijumpai")
 
+def format_phone(phone: str) -> str:
+    if not phone: return phone
+    phone = phone.strip()
+    if phone.startswith('+6'):
+        return phone
+    if phone.startswith('60'):
+        return '+' + phone
+    if phone.startswith('0'):
+        return '+6' + phone
+    if not phone.startswith('+'):
+        return '+60' + phone
+    return phone
+
 @router.post("/register", response_model=User)
 def register(data: RegisterRequest):
+    import uuid
+    from datetime import datetime
+    
+    user_id = "u_" + str(uuid.uuid4())[:8]
+    
     payload = {
         "action": "create_user",
+        "id": user_id,
         "name": data.name,
         "email": data.email,
-        "phone": data.phone,
+        "phone": format_phone(data.phone),
         "location": data.location,
+        "role": "User",
         "password_hash": hash_password(data.password)
     }
     try:
-        res = requests.post(APPS_SCRIPT_URL, json=payload, timeout=30.0)
+        res = requests.post(APPS_SCRIPT_URL, json=payload, timeout=60.0)
         res_data = res.json()
         if res_data.get("success") and "user" in res_data:
             u = res_data["user"]

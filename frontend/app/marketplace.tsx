@@ -62,6 +62,28 @@ export default function MarketplaceScreen() {
 
   // Interactive Chat Modal
   const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [activeChatRecipient, setActiveChatRecipient] = useState<{ id: string; name: string; phone?: string } | null>(null);
+  const [activeChatContext, setActiveChatContext] = useState<{ title: string; price?: number; category?: string } | null>(null);
+
+  const handleOpenChat = () => {
+    if (!selectedListing) return;
+    const recipient = {
+      id: selectedListing.sellerId,
+      name: selectedListing.sellerName,
+      phone: selectedListing.sellerPhone,
+    };
+    const context = {
+      title: selectedListing.title,
+      price: selectedListing.price,
+      category: 'Marketplace',
+    };
+    setSelectedListing(null);
+    setActiveChatRecipient(recipient);
+    setActiveChatContext(context);
+    setTimeout(() => {
+      setChatModalVisible(true);
+    }, 150);
+  };
 
   const filteredListings = listings.filter((item) => {
     const matchCat = selectedCategory === 'Semua' || item.category === selectedCategory;
@@ -296,7 +318,7 @@ export default function MarketplaceScreen() {
 
                 {/* Main Action: Chatbox Direct Launch */}
                 <TouchableOpacity
-                  onPress={() => setChatModalVisible(true)}
+                  onPress={handleOpenChat}
                   className="w-full bg-blue-600 py-4 rounded-2xl flex-row justify-center items-center shadow-md shadow-blue-600/30 mb-3"
                 >
                   <MessageCircle size={20} color="white" />
@@ -436,20 +458,15 @@ export default function MarketplaceScreen() {
       />
 
       {/* Interactive Chat Modal with Seller */}
-      {selectedListing && (
+      {activeChatRecipient && (
         <ChatModal
           visible={chatModalVisible}
-          onClose={() => setChatModalVisible(false)}
-          recipient={{
-            id: selectedListing.sellerId,
-            name: selectedListing.sellerName,
-            phone: selectedListing.sellerPhone,
+          onClose={() => {
+            setChatModalVisible(false);
+            setActiveChatRecipient(null);
           }}
-          itemContext={{
-            title: selectedListing.title,
-            price: selectedListing.price,
-            category: 'Marketplace',
-          }}
+          recipient={activeChatRecipient}
+          itemContext={activeChatContext || undefined}
         />
       )}
     </SafeAreaView>

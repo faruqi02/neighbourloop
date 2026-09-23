@@ -70,6 +70,27 @@ export default function HelpScreen() {
 
   // Chat Modal
   const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [activeChatRecipient, setActiveChatRecipient] = useState<{ id: string; name: string; phone?: string } | null>(null);
+  const [activeChatContext, setActiveChatContext] = useState<{ title: string; category?: string } | null>(null);
+
+  const handleOpenChat = () => {
+    if (!selectedRequest) return;
+    const recipient = {
+      id: selectedRequest.requesterId,
+      name: selectedRequest.requesterName,
+      phone: selectedRequest.requesterPhone,
+    };
+    const context = {
+      title: selectedRequest.title,
+      category: 'Help Nearby',
+    };
+    setSelectedRequest(null);
+    setActiveChatRecipient(recipient);
+    setActiveChatContext(context);
+    setTimeout(() => {
+      setChatModalVisible(true);
+    }, 150);
+  };
 
   const filteredRequests = requests.filter((r) => {
     const matchType = r.type === activeTab;
@@ -317,7 +338,7 @@ export default function HelpScreen() {
 
                 {/* Direct In-App Chat Button */}
                 <TouchableOpacity
-                  onPress={() => setChatModalVisible(true)}
+                  onPress={handleOpenChat}
                   className="w-full bg-purple-700 py-3.5 rounded-2xl flex-row justify-center items-center shadow-md shadow-purple-900/30 mb-2.5"
                 >
                   <MessageSquare size={18} color="white" />
@@ -469,19 +490,15 @@ export default function HelpScreen() {
       />
 
       {/* Chat Modal with Requester */}
-      {selectedRequest && (
+      {activeChatRecipient && (
         <ChatModal
           visible={chatModalVisible}
-          onClose={() => setChatModalVisible(false)}
-          recipient={{
-            id: selectedRequest.requesterId,
-            name: selectedRequest.requesterName,
-            phone: selectedRequest.requesterPhone,
+          onClose={() => {
+            setChatModalVisible(false);
+            setActiveChatRecipient(null);
           }}
-          itemContext={{
-            title: selectedRequest.title,
-            category: 'Help Nearby',
-          }}
+          recipient={activeChatRecipient}
+          itemContext={activeChatContext || undefined}
         />
       )}
     </SafeAreaView>

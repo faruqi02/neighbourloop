@@ -242,7 +242,7 @@ def create_donation(data: DonationCreate, background_tasks: BackgroundTasks, use
     new_item = DonationItem(**row_data, createdAt=created_at)
 
     RECYCLE_CACHE["donations"].insert(0, new_item)
-    background_tasks.add_task(sync_save_to_gas, {"sheet": "Donations", "data": row_data})
+    background_tasks.add_task(sync_save_to_gas, {"action": "create", "sheet": "Donations", "data": row_data})
 
     return new_item
 

@@ -90,6 +90,7 @@ def send_message(req: SendMessageRequest):
     created_at = time.strftime("%Y-%m-%dT%H:%M:%S")
     
     payload = {
+        "action": "create",
         "sheet": "Messages",
         "data": {
             "id": new_id,

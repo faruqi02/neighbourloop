@@ -131,7 +131,7 @@ def create_listing(data: ListingCreate, background_tasks: BackgroundTasks, user_
     MARKET_CACHE["data"].insert(0, new_item)
 
     # Asynchronously save to Google Sheets in background
-    background_tasks.add_task(sync_save_to_gas, {"sheet": "Listings", "data": row_data})
+    background_tasks.add_task(sync_save_to_gas, {"action": "create", "sheet": "Listings", "data": row_data})
 
     return new_item
 

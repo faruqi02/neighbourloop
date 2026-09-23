@@ -111,7 +111,7 @@ def create_help_item(data: HelpCreate, background_tasks: BackgroundTasks, user_i
     new_item = HelpRequest(**row_data, createdAt=created_at)
 
     HELP_CACHE["data"].insert(0, new_item)
-    background_tasks.add_task(sync_save_to_gas, {"sheet": "HelpRequests", "data": row_data})
+    background_tasks.add_task(sync_save_to_gas, {"action": "create", "sheet": "HelpRequests", "data": row_data})
 
     return new_item
 

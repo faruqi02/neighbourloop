@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Modal, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, MessageSquare, ChevronRight, Clock, Tag } from 'lucide-react-native';
 import { useChatStore } from '../store/useChatStore';
@@ -12,8 +12,14 @@ interface ChatHistoryModalProps {
 }
 
 export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalProps) {
-  const { conversations } = useChatStore();
+  const { conversations, fetchConversations, loading } = useChatStore();
   const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null);
+
+  useEffect(() => {
+    if (visible) {
+      fetchConversations();
+    }
+  }, [visible]);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -36,7 +42,12 @@ export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalP
 
         {/* Conversations List */}
         <ScrollView className="flex-1 bg-gray-50 px-4 pt-3" showsVerticalScrollIndicator={false}>
-          {conversations.length === 0 ? (
+          {loading && conversations.length === 0 ? (
+            <View className="items-center justify-center py-24">
+              <ActivityIndicator size="large" color="#16a34a" />
+              <Text className="text-gray-500 mt-4">Memuatkan mesej...</Text>
+            </View>
+          ) : conversations.length === 0 ? (
             <View className="items-center justify-center py-24">
               <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
                 <MessageSquare size={32} color="#9ca3af" />

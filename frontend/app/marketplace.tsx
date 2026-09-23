@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -7,10 +7,12 @@ import {
   Image, 
   TouchableOpacity, 
   Modal,
-  Linking 
+  Linking,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Plus, MapPin, X, MessageCircle, Phone, Tag, CheckCircle2 } from 'lucide-react-native';
+import { useRouter, useNavigation } from 'expo-router';
+import { Search, Plus, MapPin, X, MessageCircle, Phone, Tag, CheckCircle2, ChevronLeft } from 'lucide-react-native';
 import { useMarketStore } from '../store/useMarketStore';
 import { useUserStore } from '../store/useUserStore';
 import { Listing } from '../types';
@@ -28,8 +30,14 @@ const PRESET_IMAGES = [
 ];
 
 export default function MarketplaceScreen() {
-  const { listings, addListing } = useMarketStore();
+  const { listings, addListing, fetchListings, loading } = useMarketStore();
   const { currentUser } = useUserStore();
+  const router = useRouter();
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    fetchListings();
+  }, []);
 
   if (!currentUser) return null;
 
@@ -104,7 +112,12 @@ export default function MarketplaceScreen() {
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
       <View className="px-5 pt-3 pb-2 border-b border-gray-100">
-        <Text className="text-2xl font-black text-gray-900 mb-3">Marketplace Jiran</Text>
+        <View className="flex-row items-center mb-3">
+          <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 p-1.5 -ml-1 bg-gray-100 rounded-full">
+            <ChevronLeft size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text className="text-2xl font-black text-gray-900">Marketplace Jiran</Text>
+        </View>
 
         {/* Search Bar */}
         <View className="flex-row items-center bg-gray-100 rounded-2xl px-3.5 py-2.5 mb-3">
@@ -149,10 +162,16 @@ export default function MarketplaceScreen() {
 
       {/* Listings Stream */}
       <ScrollView className="px-5 flex-1 pt-3" showsVerticalScrollIndicator={false}>
-        {filteredListings.length === 0 ? (
+        {loading && listings.length === 0 ? (
+          <View className="items-center justify-center py-16">
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text className="text-gray-400 mt-3 font-semibold">Memuatkan barangan jiran...</Text>
+          </View>
+        ) : filteredListings.length === 0 ? (
           <View className="items-center justify-center py-16">
             <Tag size={40} color="#9ca3af" />
             <Text className="text-gray-400 mt-2 font-semibold">Tiada barang dijumpai.</Text>
+            <Text className="text-gray-400 text-xs mt-1 text-center">Jadilah yang pertama menyiarkan barangan jualan di kawasan anda!</Text>
           </View>
         ) : (
           filteredListings.map((item) => (

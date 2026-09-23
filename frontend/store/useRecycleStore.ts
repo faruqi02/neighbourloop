@@ -1,13 +1,16 @@
 import { create } from 'zustand';
 import { RecycleCenter, DonationItem, SmartRecommendation } from '../types';
-import { mockRecycleCenters, mockDonations } from '../services/mockData';
+import { apiRequest } from '../services/api';
+import { useUserStore } from './useUserStore';
 
 interface RecycleState {
   centers: RecycleCenter[];
   donations: DonationItem[];
-  addDonation: (donationData: Omit<DonationItem, 'id' | 'createdAt' | 'status'>) => void;
-  deleteDonation: (id: string) => void;
-  claimDonation: (donationId: string, claimerName: string) => void;
+  loading: boolean;
+  fetchRecycleData: () => Promise<void>;
+  addDonation: (donationData: Omit<DonationItem, 'id' | 'createdAt' | 'status'>) => Promise<boolean>;
+  deleteDonation: (id: string) => Promise<boolean>;
+  claimDonation: (donationId: string, claimerName: string) => Promise<boolean>;
   getSmartRecommendation: (
     itemName: string,
     category: string,
@@ -16,30 +19,95 @@ interface RecycleState {
 }
 
 export const useRecycleStore = create<RecycleState>((set, get) => ({
-  centers: mockRecycleCenters,
-  donations: mockDonations,
+  centers: [],
+  donations: [],
+  loading: false,
 
-  addDonation: (donationData) => set((state) => {
-    const newItem: DonationItem = {
+  fetchRecycleData: async () => {
+    set({ loading: true });
+    try {
+      const [fetchedCenters, fetchedDonations] = await Promise.all([
+        apiRequest<RecycleCenter[]>('/recycle/centers'),
+        apiRequest<DonationItem[]>('/recycle/donations'),
+      ]);
+
+      set({
+        centers: fetchedCenters && Array.isArray(fetchedCenters) ? fetchedCenters : [],
+        donations: fetchedDonations && Array.isArray(fetchedDonations) ? fetchedDonations : [],
+        loading: false,
+      });
+    } catch (e) {
+      set({ loading: false });
+    }
+  },
+
+  addDonation: async (donationData) => {
+    const currentUser = useUserStore.getState().currentUser;
+    const userId = currentUser ? currentUser.id : 'u1';
+
+    const tempItem: DonationItem = {
       ...donationData,
       id: `d_${Date.now()}`,
       status: 'Available',
       createdAt: 'Baru sahaja',
     };
-    return { donations: [newItem, ...state.donations] };
-  }),
+    set((state) => ({ donations: [tempItem, ...state.donations] }));
 
-  deleteDonation: (id) => set((state) => ({
-    donations: state.donations.filter((item) => item.id !== id),
-  })),
+    try {
+      const saved = await apiRequest<DonationItem>(`/recycle/donations?user_id=${userId}`, {
+        method: 'POST',
+        body: JSON.stringify({
+          title: donationData.title,
+          description: donationData.description,
+          category: donationData.category,
+          imageUrl: donationData.imageUrl,
+          donorPhone: donationData.donorPhone,
+          donorContactNotes: donationData.donorContactNotes,
+        }),
+      });
 
-  claimDonation: (donationId, claimerName) => set((state) => ({
-    donations: state.donations.map((item) =>
-      item.id === donationId
-        ? { ...item, status: 'Claimed', claimedBy: claimerName }
-        : item
-    ),
-  })),
+      if (saved) {
+        set((state) => ({
+          donations: state.donations.map((item) => (item.id === tempItem.id ? saved : item)),
+        }));
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  deleteDonation: async (id) => {
+    set((state) => ({
+      donations: state.donations.filter((item) => item.id !== id),
+    }));
+    try {
+      await apiRequest(`/recycle/donations/${id}`, { method: 'DELETE' });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  claimDonation: async (donationId, claimerName) => {
+    set((state) => ({
+      donations: state.donations.map((item) =>
+        item.id === donationId
+          ? { ...item, status: 'Claimed', claimedBy: claimerName }
+          : item
+      ),
+    }));
+
+    try {
+      await apiRequest(`/recycle/donations/${donationId}/claim?claimer_name=${encodeURIComponent(claimerName)}`, {
+        method: 'POST',
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
 
   getSmartRecommendation: (itemName, category, condition) => {
     const { centers } = get();
@@ -59,7 +127,7 @@ export const useRecycleStore = create<RecycleState>((set, get) => ({
     } else {
       const recycleCenters = centers.filter((c) => c.type === 'RecycleCenter');
       let explanation = `Barang "${itemName}" yang rosak boleh dihantar ke pusat kitar semula untuk diproses menjadi bahan mentah baharu.`;
-      
+
       if (catLower.includes('e-waste') || catLower.includes('elektronik') || itemLower.includes('telefon') || itemLower.includes('kabel')) {
         explanation = `Barang "${itemName}" mengandungi komponen E-Waste berbahaya. Hantar ke fasiliti pemulihan berdaftar untuk mengelakkan pencemaran toksik dan menyelamatkan logam berharga.`;
       }

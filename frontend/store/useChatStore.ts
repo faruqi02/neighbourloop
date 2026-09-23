@@ -1,22 +1,28 @@
 import { create } from 'zustand';
 import { ChatConversation, ChatMessage } from '../types';
-import { mockConversations } from '../services/mockData';
+import { apiRequest } from '../services/api';
+import { useUserStore } from './useUserStore';
 
 interface ChatState {
   conversations: ChatConversation[];
   activeConversationId: string | null;
+  loading: boolean;
+  error: string | null;
   setActiveConversationId: (id: string | null) => void;
+  fetchConversations: () => Promise<void>;
   getOrCreateConversation: (
     participant: { id: string; name: string; avatarUrl?: string; phone?: string },
     itemContext?: { title: string; price?: number; category?: string }
   ) => string;
-  sendMessage: (conversationId: string, text: string, senderId: string, senderName: string) => void;
+  sendMessage: (conversationId: string, text: string, senderId: string, senderName: string) => Promise<void>;
   markAsRead: (conversationId: string) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
-  conversations: mockConversations,
+  conversations: [],
   activeConversationId: null,
+  loading: false,
+  error: null,
 
   setActiveConversationId: (id) => {
     set({ activeConversationId: id });
@@ -25,31 +31,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
+  fetchConversations: async () => {
+    const currentUser = useUserStore.getState().currentUser;
+    if (!currentUser) return;
+    
+    set({ loading: true, error: null });
+    try {
+      const data = await apiRequest<ChatConversation[]>(`/chat/conversations/${currentUser.id}`);
+      if (data) {
+        set({ conversations: data, loading: false });
+      } else {
+        set({ loading: false });
+      }
+    } catch (e) {
+      set({ error: 'Gagal memuatkan mesej', loading: false });
+    }
+  },
+
   getOrCreateConversation: (participant, itemContext) => {
     const state = get();
     // Check if conversation with this participant already exists
-    const existing = state.conversations.find((c) => c.participantId === participant.id);
+    const existingId = `conv_${participant.id}`;
+    const existing = state.conversations.find((c) => c.id === existingId);
+    
     if (existing) {
-      // Update item context if specified
-      if (itemContext && !existing.itemContextTitle) {
-        set({
-          conversations: state.conversations.map((c) =>
-            c.id === existing.id
-              ? {
-                  ...c,
-                  itemContextTitle: itemContext.title,
-                  itemContextPrice: itemContext.price,
-                  itemContextCategory: itemContext.category,
-                }
-              : c
-          ),
-        });
-      }
       return existing.id;
     }
 
-    // Create new conversation
-    const newId = `conv_${Date.now()}`;
+    // Create local dummy new conversation until first message is sent
+    const newId = existingId;
     const newConversation: ChatConversation = {
       id: newId,
       participantId: participant.id,
@@ -59,31 +69,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
       itemContextTitle: itemContext?.title,
       itemContextPrice: itemContext?.price,
       itemContextCategory: itemContext?.category,
-      lastMessage: 'Perbualan dimulakan',
-      lastMessageTime: 'Baru sahaja',
+      lastMessage: 'Mula perbualan...',
+      lastMessageTime: '',
       unreadCount: 0,
-      messages: [
-        {
-          id: `msg_init_${Date.now()}`,
-          conversationId: newId,
-          senderId: participant.id,
-          senderName: participant.name,
-          text: `Hai! Terima kasih kerana menghubungi saya mengenai ${itemContext?.title || 'perkara ini'}. Ada apa yang boleh saya bantu?`,
-          timestamp: 'Baru sahaja',
-          isMe: false,
-        },
-      ],
+      messages: [],
     };
 
     set({ conversations: [newConversation, ...state.conversations] });
     return newId;
   },
 
-  sendMessage: (conversationId, text, senderId, senderName) => {
+  sendMessage: async (conversationId, text, senderId, senderName) => {
     if (!text.trim()) return;
+    
+    const state = get();
+    const conv = state.conversations.find(c => c.id === conversationId);
+    if (!conv) return;
 
+    const participantId = conv.participantId;
+    const itemContext = conv.itemContextTitle || '';
+
+    // Optimistic UI update
+    const tempId = `msg_temp_${Date.now()}`;
     const newMessage: ChatMessage = {
-      id: `msg_${Date.now()}`,
+      id: tempId,
       conversationId,
       senderId,
       senderName,
@@ -93,18 +102,36 @@ export const useChatStore = create<ChatState>((set, get) => ({
     };
 
     set((state) => ({
-      conversations: state.conversations.map((conv) => {
-        if (conv.id === conversationId) {
+      conversations: state.conversations.map((c) => {
+        if (c.id === conversationId) {
           return {
-            ...conv,
+            ...c,
             lastMessage: text.trim(),
             lastMessageTime: 'Baru sahaja',
-            messages: [...conv.messages, newMessage],
+            messages: [...c.messages, newMessage],
           };
         }
-        return conv;
+        return c;
       }),
     }));
+
+    try {
+      await apiRequest('/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user1_id: senderId,
+          user2_id: participantId,
+          sender_id: senderId,
+          context_id: itemContext,
+          message: text.trim()
+        })
+      });
+      // Refresh to get real IDs and timestamps
+      await get().fetchConversations();
+    } catch(e) {
+      console.error('Failed to send message', e);
+    }
   },
 
   markAsRead: (conversationId) => {
@@ -115,4 +142,3 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
   },
 }));
-

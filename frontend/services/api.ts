@@ -13,7 +13,7 @@ if (debuggerHost) {
 export async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout for mobile
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for Google Apps Script
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,

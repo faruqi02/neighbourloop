@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -10,6 +10,7 @@ import {
   Linking 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useNavigation } from 'expo-router';
 import { 
   HeartHandshake, 
   Plus, 
@@ -19,7 +20,8 @@ import {
   Tag, 
   Phone, 
   MessageSquare, 
-  CheckCircle2 
+  CheckCircle2,
+  ChevronLeft
 } from 'lucide-react-native';
 import { useHelpStore } from '../store/useHelpStore';
 import { useUserStore } from '../store/useUserStore';
@@ -36,8 +38,14 @@ const PRESET_IMAGES = [
 ];
 
 export default function HelpScreen() {
-  const { requests, addRequest, fulfillRequest } = useHelpStore();
+  const { requests, addRequest, fulfillRequest, fetchHelpRequests, loading } = useHelpStore();
   const { currentUser } = useUserStore();
+  const router = useRouter();
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    fetchHelpRequests();
+  }, []);
 
   if (!currentUser) return null;
 
@@ -117,8 +125,16 @@ export default function HelpScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
-      <View className="px-5 pt-3 pb-5 bg-purple-700">
-        <Text className="text-2xl font-black text-white text-center">Help Nearby</Text>
+      <View className="px-5 pt-3 pb-6 bg-purple-600">
+        <View className="flex-row items-center justify-center relative">
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            className="absolute left-0 p-2 z-10"
+          >
+            <ChevronLeft size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <Text className="text-2xl font-black text-white text-center">Help Nearby</Text>
+        </View>
         <Text className="text-purple-200 text-xs text-center mt-0.5">
           Saling Membantu & Berkongsi Sumber Sesama Jiran
         </Text>
@@ -128,9 +144,8 @@ export default function HelpScreen() {
         {/* Permintaan vs Tawaran Tabs */}
         <View className="flex-row bg-gray-200/70 rounded-2xl p-1 mb-3">
           <TouchableOpacity
-            className={`flex-1 py-2.5 rounded-xl items-center ${
-              activeTab === 'Permintaan' ? 'bg-white shadow-sm' : 'bg-transparent'
-            }`}
+            className="flex-1 py-2.5 rounded-xl items-center"
+            style={activeTab === 'Permintaan' ? { backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : { backgroundColor: 'transparent' }}
             onPress={() => setActiveTab('Permintaan')}
           >
             <Text
@@ -143,9 +158,8 @@ export default function HelpScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            className={`flex-1 py-2.5 rounded-xl items-center ${
-              activeTab === 'Tawaran' ? 'bg-white shadow-sm' : 'bg-transparent'
-            }`}
+            className="flex-1 py-2.5 rounded-xl items-center"
+            style={activeTab === 'Tawaran' ? { backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : { backgroundColor: 'transparent' }}
             onPress={() => setActiveTab('Tawaran')}
           >
             <Text

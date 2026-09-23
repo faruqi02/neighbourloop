@@ -59,7 +59,7 @@ class RecycleCenter(BaseModel):
     address: str
     distance: float
     operatingHours: str
-    coordinates: dict
+    coordinates: Optional[dict] = {"latitude": 1.5533, "longitude": 103.6366}
     typesAccepted: List[str]
     contactPhone: Optional[str] = None
 

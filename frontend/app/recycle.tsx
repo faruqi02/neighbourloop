@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -10,9 +10,11 @@ import {
   Linking 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useNavigation } from 'expo-router';
 import { 
   MapPin, 
   ChevronRight, 
+  ChevronLeft,
   Sparkles, 
   Phone, 
   Clock, 
@@ -51,8 +53,14 @@ const PRESET_ITEMS = [
 ];
 
 export default function RecycleScreen() {
-  const { centers, donations, addDonation, claimDonation, getSmartRecommendation } = useRecycleStore();
+  const { centers, donations, addDonation, claimDonation, getSmartRecommendation, fetchRecycleData, loading } = useRecycleStore();
   const { currentUser } = useUserStore();
+  const router = useRouter();
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    fetchRecycleData();
+  }, []);
 
   if (!currentUser) return null;
 
@@ -158,23 +166,29 @@ export default function RecycleScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header with Custom Recycle Icon */}
-      <View className="px-5 pt-3 pb-3 bg-green-700 flex-row items-center justify-between">
-        <View className="flex-1">
-          <Text className="text-2xl font-black text-white">Donate & Recycle</Text>
-          <Text className="text-green-100 text-xs mt-0.5">
-            Sistem Cadangan Pintar & Kitar Semula Komuniti
-          </Text>
+      <View className="px-5 pt-3 pb-3 bg-green-700">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center flex-1 pr-2">
+            <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 p-1.5 -ml-1 bg-green-800/50 rounded-full">
+              <ChevronLeft size={24} color="#ffffff" />
+            </TouchableOpacity>
+            <View className="flex-1">
+              <Text className="text-2xl font-black text-white" numberOfLines={1} adjustsFontSizeToFit>Donate & Recycle</Text>
+              <Text className="text-green-100 text-[10px] mt-0.5" numberOfLines={2}>
+                Sistem Cadangan Pintar & Kitar Semula
+              </Text>
+            </View>
+          </View>
+          <Image source={recycleIcon} className="w-12 h-12" style={{ width: 48, height: 48 }} resizeMode="contain" />
         </View>
-        <Image source={recycleIcon} className="w-12 h-12" resizeMode="contain" />
       </View>
 
       {/* Subtabs Header */}
       <View className="flex-row bg-gray-100 p-1.5 mx-5 mt-3 rounded-2xl">
         <TouchableOpacity
           onPress={() => setActiveSubTab('SmartEngine')}
-          className={`flex-1 py-2 rounded-xl items-center ${
-            activeSubTab === 'SmartEngine' ? 'bg-white shadow-sm' : 'bg-transparent'
-          }`}
+          className="flex-1 py-2 rounded-xl items-center"
+          style={activeSubTab === 'SmartEngine' ? { backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : { backgroundColor: 'transparent' }}
         >
           <Text
             className={`text-xs font-bold ${
@@ -187,9 +201,8 @@ export default function RecycleScreen() {
 
         <TouchableOpacity
           onPress={() => setActiveSubTab('Directory')}
-          className={`flex-1 py-2 rounded-xl items-center ${
-            activeSubTab === 'Directory' ? 'bg-white shadow-sm' : 'bg-transparent'
-          }`}
+          className="flex-1 py-2 rounded-xl items-center"
+          style={activeSubTab === 'Directory' ? { backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : { backgroundColor: 'transparent' }}
         >
           <Text
             className={`text-xs font-bold ${
@@ -202,9 +215,8 @@ export default function RecycleScreen() {
 
         <TouchableOpacity
           onPress={() => setActiveSubTab('ClaimFeed')}
-          className={`flex-1 py-2 rounded-xl items-center ${
-            activeSubTab === 'ClaimFeed' ? 'bg-white shadow-sm' : 'bg-transparent'
-          }`}
+          className="flex-1 py-2 rounded-xl items-center"
+          style={activeSubTab === 'ClaimFeed' ? { backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 } : { backgroundColor: 'transparent' }}
         >
           <Text
             className={`text-xs font-bold ${

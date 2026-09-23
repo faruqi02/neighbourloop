@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/useUserStore';
@@ -24,8 +24,12 @@ const recycleIcon = require('../../images/recycle_icon.png');
 
 export default function HomeDashboard() {
   const { currentUser } = useUserStore();
-  const { notices } = useNoticeStore();
+  const { notices, fetchNotices } = useNoticeStore();
   const router = useRouter();
+
+  useEffect(() => {
+    fetchNotices();
+  }, []);
 
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<CommunityNotice | null>(null);

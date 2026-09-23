@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShoppingCart, HeartHandshake, MapPin } from 'lucide-react-native';
@@ -9,9 +9,14 @@ import { useUserStore } from '../../store/useUserStore';
 
 export default function ExplorerScreen() {
   const router = useRouter();
-  const { listings } = useMarketStore();
-  const { requests } = useHelpStore();
+  const { listings, fetchListings } = useMarketStore();
+  const { requests, fetchHelpRequests } = useHelpStore();
   const { currentUser } = useUserStore();
+
+  useEffect(() => {
+    fetchListings();
+    fetchHelpRequests();
+  }, []);
 
   if (!currentUser) return null;
 

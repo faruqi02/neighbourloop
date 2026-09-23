@@ -14,18 +14,44 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUserStore } from '../store/useUserStore';
-import { UserPlus, Key, Mail, User, MapPin, Eye, EyeOff, ChevronLeft } from 'lucide-react-native';
+import { UserPlus, Key, Mail, User, MapPin, Eye, EyeOff, ChevronLeft, Navigation } from 'lucide-react-native';
+import * as Location from 'expo-location';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [location, setLocation] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [error, setError] = useState('');
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const handleDetectLocation = async () => {
+    setDetecting(true);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Keizinan lokasi diperlukan.');
+        setDetecting(false);
+        return;
+      }
+      let loc = await Location.getCurrentPositionAsync({});
+      let geocode = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude
+      });
+      if (geocode && geocode.length > 0) {
+        const p = geocode[0];
+        setLocation(p.district || p.city || p.subregion || p.region || 'Lokasi Semasa');
+      }
+    } catch (error) {
+      alert('Gagal mengesan lokasi.');
+    } finally {
+      setDetecting(false);
+    }
+  };
   
   const router = useRouter();
   const { setCurrentUser } = useUserStore();
@@ -183,6 +209,16 @@ export default function RegisterScreen() {
                   onFocus={() => setFocusedField('location')}
                   onBlur={() => setFocusedField(null)}
                 />
+                <TouchableOpacity 
+                  onPress={handleDetectLocation}
+                  className="p-2 bg-emerald-50 rounded-lg"
+                >
+                  {detecting ? (
+                    <ActivityIndicator size="small" color="#00875A" />
+                  ) : (
+                    <Navigation size={18} color="#00875A" />
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
 

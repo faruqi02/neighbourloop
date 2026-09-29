@@ -29,19 +29,22 @@ def update_user_location(user_id: str, location: str, radius_km: int = 5):
 def update_contact_details(
     user_id: str,
     phone: Optional[str] = None,
-    telegram: Optional[str] = None,
-    contact_notes: Optional[str] = None,
-    preferred_method: Optional[str] = None
+    username: Optional[str] = None,
+    location: Optional[str] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
 ):
     user = USERS_DB.get(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if phone is not None:
         user.phone = phone
-    if telegram is not None:
-        user.telegram = telegram
-    if contact_notes is not None:
-        user.contactNotes = contact_notes
-    if preferred_method is not None:
-        user.preferredContactMethod = preferred_method
+    if username is not None:
+        user.username = username
+    if location is not None:
+        user.location = location
+    if lat is not None:
+        user.lat = lat
+    if lng is not None:
+        user.lng = lng
     return user

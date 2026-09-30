@@ -89,6 +89,38 @@ export default function RegisterScreen() {
     setLoading(true);
 
     try {
+      let finalLat = lat;
+      let finalLng = lng;
+
+      if (finalLat === undefined || finalLng === undefined) {
+        const PRESET_COORDINATES: Record<string, { lat: number; lng: number }> = {
+          'behrang stesen': { lat: 3.7485, lng: 101.4497 },
+          'behrang sentral': { lat: 3.7512, lng: 101.4551 },
+          'behrang residen': { lat: 3.7450, lng: 101.4600 },
+          'behrang 2020': { lat: 3.7400, lng: 101.4420 },
+          'tanjung malim': { lat: 3.6833, lng: 101.5167 },
+          'slim river': { lat: 3.8333, lng: 101.4000 },
+          'iskandar puteri': { lat: 1.4889, lng: 103.6525 },
+          'skudai': { lat: 1.5350, lng: 103.6330 },
+          'taman universiti': { lat: 1.5300, lng: 103.6280 },
+        };
+        const locKey = location.trim().toLowerCase();
+        if (PRESET_COORDINATES[locKey]) {
+          finalLat = PRESET_COORDINATES[locKey].lat;
+          finalLng = PRESET_COORDINATES[locKey].lng;
+        } else {
+          try {
+            const geocoded = await Location.geocodeAsync(location.trim());
+            if (geocoded && geocoded.length > 0) {
+              finalLat = geocoded[0].latitude;
+              finalLng = geocoded[0].longitude;
+            }
+          } catch (e) {
+            // Geocoding fallback
+          }
+        }
+      }
+
       let backendUrl = 'http://192.168.1.165:8000';
       const debuggerHost = Constants.expoConfig?.hostUri;
       if (debuggerHost) {
@@ -102,8 +134,8 @@ export default function RegisterScreen() {
         phone: phone.trim(),
         password,
         location: location.trim(),
-        lat,
-        lng,
+        lat: finalLat,
+        lng: finalLng,
       };
 
       let response: Response;
@@ -129,7 +161,7 @@ export default function RegisterScreen() {
 
       const userData = await response.json();
       setCurrentUser(userData);
-      router.replace('/(tabs)/');
+      router.replace('/(tabs)' as any);
     } catch (err: any) {
       setError(err.message || 'Gagal mendaftar ke pangkalan data.');
     } finally {

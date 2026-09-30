@@ -5,6 +5,17 @@
  */
 
 const DRIVE_FOLDER_ID = "13RieHioFy2OKIWQJ3E9ROxxXn_7TyOzb"; // Folder ID asal anda
+ 
+/**
+ * Jalankan fungsi ini SEKALI SAHAJA (Pilih 'authorizeDrive' dan tekan butang 'Run' / 'Jalankan' ▶️)
+ * untuk membenarkan akses Google Drive (Klik Review Permissions -> Allow).
+ */
+function authorizeDrive() {
+  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+  const testFile = folder.createFile("temp_auth.txt", "NeighbourLoop Auth Test");
+  testFile.setTrashed(true); // Padam fail ujian serta-merta
+  Logger.log("Akses Penuh Google Drive Berjaya Dibenarkan!");
+}
 
 function jsonResponse(data, status = 200) {
   return ContentService.createTextOutput(JSON.stringify(data))
@@ -75,16 +86,73 @@ function doPost(e) {
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     
-    // Legacy support for create_user so that the existing Python backend doesn't instantly crash
+    // --- UPLOAD FILE / IMAGE TO GOOGLE DRIVE (app_storage) ---
+    if (action === "upload_file" || action === "upload_image") {
+      const base64Data = payload.base64 || payload.data;
+      if (!base64Data) {
+        return jsonResponse({ error: "Missing base64 data" }, 400);
+      }
+      
+      const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+      const mimeType = payload.mimeType || "image/jpeg";
+      const fileName = payload.filename || ("file_" + new Date().getTime() + ".jpg");
+      
+      const cleanBase64 = String(base64Data).replace(/^data:image\/[a-z]+;base64,/, "");
+      const decodedBytes = Utilities.base64Decode(cleanBase64);
+      const blob = Utilities.newBlob(decodedBytes, mimeType, fileName);
+      
+      const file = folder.createFile(blob);
+      try {
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch (shareErr) {
+        Logger.log("Sharing note: " + shareErr);
+      }
+      
+      const fileId = file.getId();
+      const publicUrl = "https://lh3.googleusercontent.com/d/" + fileId;
+      
+      // If userId is provided, update avatarUrl in Users sheet automatically
+      const targetUserId = payload.userId || payload.user_id;
+      if (targetUserId) {
+        const uSheet = ss.getSheetByName("Users");
+        if (uSheet) {
+          const uRows = uSheet.getDataRange().getValues();
+          const uHeaders = uRows[0];
+          const avatarCol = uHeaders.indexOf("avatarUrl");
+          const idCol = uHeaders.indexOf("id");
+          if (avatarCol !== -1 && idCol !== -1) {
+            for (let r = 1; r < uRows.length; r++) {
+              if (String(uRows[r][idCol]) === String(targetUserId)) {
+                uSheet.getRange(r + 1, avatarCol + 1).setValue(publicUrl);
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      return jsonResponse({
+        success: true,
+        fileId: fileId,
+        url: publicUrl,
+        message: "File uploaded successfully to Google Drive"
+      });
+    }
+
+    // Support for create_user
     if (action === "create_user") {
        payload.sheet = "Users";
        payload.data = {
          id: payload.id || "u_" + new Date().getTime(),
          name: payload.name || "Unknown",
+         username: payload.username || (payload.email ? payload.email.split('@')[0] : ""),
          email: payload.email || "",
          password_hash: payload.password_hash || "",
          phone: payload.phone || "",
          location: payload.location || "",
+         lat: (payload.lat !== undefined && payload.lat !== null && payload.lat !== "") ? payload.lat : "",
+         lng: (payload.lng !== undefined && payload.lng !== null && payload.lng !== "") ? payload.lng : "",
+         radiusKm: (payload.radiusKm !== undefined && payload.radiusKm !== null && payload.radiusKm !== "") ? payload.radiusKm : 5,
          avatarUrl: payload.avatarUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(payload.name || "User"),
          role: payload.role || "User",
          status: payload.status || "Aktif"
@@ -135,6 +203,38 @@ function doPost(e) {
         }
       }
       return jsonResponse({ error: "Record not found" }, 404);
+    }
+
+    // --- BATCH MARK READ FOR CHAT MESSAGES ---
+    if (action === "mark_messages_read") {
+      const msgSheet = ss.getSheetByName("Messages");
+      if (msgSheet) {
+        const mRows = msgSheet.getDataRange().getValues();
+        if (mRows.length > 1) {
+          const mHeaders = mRows[0];
+          const isReadIdx = mHeaders.indexOf("is_read");
+          const u1Idx = mHeaders.indexOf("user1_id");
+          const u2Idx = mHeaders.indexOf("user2_id");
+          const senderIdx = mHeaders.indexOf("sender_id");
+          const uid = String(payload.userId || payload.user_id || "");
+          const oid = String(payload.otherUserId || payload.other_user_id || "");
+
+          if (isReadIdx !== -1 && u1Idx !== -1 && u2Idx !== -1) {
+            for (let r = 1; r < mRows.length; r++) {
+              const u1 = String(mRows[r][u1Idx]);
+              const u2 = String(mRows[r][u2Idx]);
+              const snd = String(mRows[r][senderIdx]);
+              const isMatch = (u1 === uid && u2 === oid) || (u1 === oid && u2 === uid);
+              if (isMatch && snd !== uid) {
+                if (String(mRows[r][isReadIdx]).toUpperCase() !== "TRUE") {
+                  msgSheet.getRange(r + 1, isReadIdx + 1).setValue("TRUE");
+                }
+              }
+            }
+          }
+        }
+      }
+      return jsonResponse({ success: true, message: "Messages marked as read successfully" });
     }
 
     // --- DELETE ---

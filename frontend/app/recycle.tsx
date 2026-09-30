@@ -85,7 +85,7 @@ export default function RecycleScreen() {
   const [donationCat, setDonationCat] = useState(RECYCLE_CATEGORIES[0]);
   const [donationImage, setDonationImage] = useState('https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400');
   const [donorPhone, setDonorPhone] = useState(currentUser.phone || '');
-  const [donorNotes, setDonorNotes] = useState(currentUser.contactNotes || '');
+  const [donorNotes, setDonorNotes] = useState('');
 
   // Success Feedback Modal
   const [successVisible, setSuccessVisible] = useState(false);
@@ -552,7 +552,7 @@ export default function RecycleScreen() {
           <TouchableOpacity
             onPress={() => {
               setDonorPhone(currentUser.phone || '');
-              setDonorNotes(currentUser.contactNotes || '');
+              setDonorNotes('');
               setDonateModalVisible(true);
             }}
             className="absolute bottom-6 right-6 bg-purple-700 px-5 py-3.5 rounded-full flex-row items-center shadow-lg shadow-purple-900/40"

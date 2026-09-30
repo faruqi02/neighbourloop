@@ -10,7 +10,7 @@ class User(BaseModel):
     location: str
     lat: Optional[float] = None
     lng: Optional[float] = None
-    radiusKm: int = 5
+    radiusKm: Optional[int] = 5
     avatarUrl: Optional[str] = None
     role: Optional[str] = "User"
     status: Optional[str] = "Aktif"
@@ -29,6 +29,20 @@ class RegisterRequest(BaseModel):
     location: str
     lat: Optional[float] = None
     lng: Optional[float] = None
+
+class UserProfileUpdate(BaseModel):
+    user_id: Optional[str] = None
+    name: Optional[str] = None
+    username: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    radiusKm: Optional[int] = None
+    avatarUrl: Optional[str] = None
+    avatarBase64: Optional[str] = None
+    newPassword: Optional[str] = None
 
 class Listing(BaseModel):
     id: str
@@ -52,8 +66,12 @@ class ListingCreate(BaseModel):
     category: Literal['Perabot', 'Elektronik', 'Pakaian', 'Lain-lain']
     condition: Literal['Baru', 'Seperti Baru', 'Terpakai'] = 'Terpakai'
     imageUrl: Optional[str] = None
+    imageBase64: Optional[str] = None
+    sellerId: Optional[str] = None
+    sellerName: Optional[str] = None
     sellerPhone: Optional[str] = None
     sellerContactNotes: Optional[str] = None
+    distance: Optional[float] = None
 
 class RecycleCenter(BaseModel):
     id: str

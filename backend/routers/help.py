@@ -7,7 +7,7 @@ from schemas import HelpRequest, HelpCreate
 
 router = APIRouter(prefix="/help", tags=["Help Nearby"])
 
-APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwitujRlYaYoxpd7UzD5Ieffo87pOarz_vTXwo9_mSPvf0cjcj9OHHUCIfUEQdjUQDU/exec"
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfZ19MpaNnKrMmgkwDGFhnZQ1Kjuo4n4UDM3rWcdHscIU9WesFKILxEGNlyH_hkJQv/exec"
 
 HELP_CACHE = {
     "data": [],

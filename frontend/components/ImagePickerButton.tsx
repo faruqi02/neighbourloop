@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 interface ImagePickerButtonProps {
   selectedImageUri: string;
-  onImageSelected: (uri: string) => void;
+  onImageSelected: (uri: string, base64?: string) => void;
   presetImages?: string[];
   title?: string;
 }
@@ -41,11 +41,13 @@ export default function ImagePickerButton({
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
+        quality: 0.7,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        onImageSelected(result.assets[0].uri);
+        const asset = result.assets[0];
+        onImageSelected(asset.uri, asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : undefined);
       }
     } catch (error) {
       console.warn('Error picking image:', error);
@@ -68,11 +70,13 @@ export default function ImagePickerButton({
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
+        quality: 0.7,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        onImageSelected(result.assets[0].uri);
+        const asset = result.assets[0];
+        onImageSelected(asset.uri, asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : undefined);
       }
     } catch (error) {
       console.warn('Error taking photo:', error);

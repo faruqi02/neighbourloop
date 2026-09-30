@@ -6,7 +6,7 @@ from schemas import User, AdminStatsResponse
 from database import USERS_DB, LISTINGS_DB, DONATIONS_DB, HELP_REQUESTS_DB, RECYCLE_CENTERS_DB, NOTICES_DB
 
 router = APIRouter(prefix="/admin", tags=["Supervisor & Admin Dashboard"])
-APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwitujRlYaYoxpd7UzD5Ieffo87pOarz_vTXwo9_mSPvf0cjcj9OHHUCIfUEQdjUQDU/exec"
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfZ19MpaNnKrMmgkwDGFhnZQ1Kjuo4n4UDM3rWcdHscIU9WesFKILxEGNlyH_hkJQv/exec"
 
 import time
 

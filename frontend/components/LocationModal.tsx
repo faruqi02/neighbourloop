@@ -19,30 +19,41 @@ const PRESET_LOCATIONS = [
   'Slim River',
 ];
 
+const PRESET_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  'Behrang Stesen': { lat: 3.7485, lng: 101.4497 },
+  'Behrang Sentral': { lat: 3.7512, lng: 101.4551 },
+  'Behrang Residen': { lat: 3.7450, lng: 101.4600 },
+  'Behrang 2020': { lat: 3.7400, lng: 101.4420 },
+  'Tanjung Malim': { lat: 3.6833, lng: 101.5167 },
+  'Slim River': { lat: 3.8333, lng: 101.4000 },
+};
+
 const RADIUS_OPTIONS = [2, 5, 10, 20];
 
 export default function LocationModal({ visible, onClose }: Props) {
   const { currentUser, updateLocation } = useUserStore();
-  const [selectedLoc, setSelectedLoc] = useState(currentUser.location);
-  const [selectedRadius, setSelectedRadius] = useState(currentUser.radiusKm || 5);
+  const [selectedLoc, setSelectedLoc] = useState(currentUser?.location || '');
+  const [selectedRadius, setSelectedRadius] = useState(currentUser?.radiusKm || 5);
+  const [lat, setLat] = useState<number | undefined>(currentUser?.lat);
+  const [lng, setLng] = useState<number | undefined>(currentUser?.lng);
 
   const [detecting, setDetecting] = useState(false);
 
-  const handleSave = async () => {
-    updateLocation(selectedLoc, selectedRadius);
-    
-    if (currentUser?.id) {
-      try {
-        await apiRequest(`/admin/users/${currentUser.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ neighborhood: selectedLoc })
-        });
-      } catch(e) {
-        console.error('Failed to save location', e);
-      }
+  React.useEffect(() => {
+    if (visible && currentUser) {
+      setSelectedLoc(currentUser.location || '');
+      setSelectedRadius(currentUser.radiusKm || 5);
+      setLat(currentUser.lat);
+      setLng(currentUser.lng);
     }
-    onClose();
+  }, [visible, currentUser]);
+
+  const handleSelectPreset = (loc: string) => {
+    setSelectedLoc(loc);
+    if (PRESET_COORDINATES[loc]) {
+      setLat(PRESET_COORDINATES[loc].lat);
+      setLng(PRESET_COORDINATES[loc].lng);
+    }
   };
 
   const handleDetectLocation = async () => {
@@ -55,6 +66,9 @@ export default function LocationModal({ visible, onClose }: Props) {
         return;
       }
       let loc = await Location.getCurrentPositionAsync({});
+      setLat(loc.coords.latitude);
+      setLng(loc.coords.longitude);
+
       let geocode = await Location.reverseGeocodeAsync({
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude
@@ -68,6 +82,21 @@ export default function LocationModal({ visible, onClose }: Props) {
     } finally {
       setDetecting(false);
     }
+  };
+
+  const handleSave = async () => {
+    let finalLat = lat;
+    let finalLng = lng;
+
+    if ((finalLat === undefined || finalLng === undefined) && selectedLoc) {
+      if (PRESET_COORDINATES[selectedLoc]) {
+        finalLat = PRESET_COORDINATES[selectedLoc].lat;
+        finalLng = PRESET_COORDINATES[selectedLoc].lng;
+      }
+    }
+
+    updateLocation(selectedLoc, selectedRadius, finalLat, finalLng);
+    onClose();
   };
 
   return (
@@ -98,6 +127,15 @@ export default function LocationModal({ visible, onClose }: Props) {
             )}
           </TouchableOpacity>
 
+          {lat && lng ? (
+            <View className="mb-3 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg flex-row items-center">
+              <Check size={14} color="#059669" />
+              <Text className="text-xs font-semibold text-emerald-800 ml-1.5">
+                Koordinat GPS Aktif: {lat.toFixed(4)}, {lng.toFixed(4)}
+              </Text>
+            </View>
+          ) : null}
+
           <Text className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wide">
             Komuniti Kejiranan / Kampus
           </Text>
@@ -105,7 +143,7 @@ export default function LocationModal({ visible, onClose }: Props) {
             {PRESET_LOCATIONS.map((loc) => (
               <TouchableOpacity
                 key={loc}
-                onPress={() => setSelectedLoc(loc)}
+                onPress={() => handleSelectPreset(loc)}
                 className={`flex-row items-center justify-between p-3 rounded-xl mb-2 border ${
                   selectedLoc === loc
                     ? 'bg-green-50 border-green-500'

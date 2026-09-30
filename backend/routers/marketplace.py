@@ -7,13 +7,13 @@ from schemas import Listing, ListingCreate
 
 router = APIRouter(prefix="/marketplace", tags=["Marketplace"])
 
-APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwitujRlYaYoxpd7UzD5Ieffo87pOarz_vTXwo9_mSPvf0cjcj9OHHUCIfUEQdjUQDU/exec"
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfZ19MpaNnKrMmgkwDGFhnZQ1Kjuo4n4UDM3rWcdHscIU9WesFKILxEGNlyH_hkJQv/exec"
 
 MARKET_CACHE = {
     "data": [],
     "last_fetched": 0
 }
-CACHE_TTL = 60.0  # 60 seconds
+CACHE_TTL = 5.0  # 5 seconds fast cache
 
 def sync_save_to_gas(payload: dict):
     try:
@@ -102,12 +102,55 @@ def get_listing(listing_id: str):
 
 @router.post("", response_model=Listing)
 def create_listing(data: ListingCreate, background_tasks: BackgroundTasks, user_id: str = Query("u1")):
-    seller_name = "Jiran"
-    seller_phone = data.sellerPhone or ""
+    seller_id = data.sellerId or user_id or "u1"
+    
+    # 1. Resolve seller username accurately
+    seller_name = data.sellerName
+    if not seller_name or seller_name == "Penjual":
+        try:
+            user_resp = requests.get(APPS_SCRIPT_URL, params={"sheet": "Users", "id": seller_id}, timeout=10.0)
+            u = user_resp.json()
+            if isinstance(u, dict) and u.get("id"):
+                seller_name = u.get("username") or u.get("name") or "Jiran"
+        except Exception:
+            seller_name = "Jiran"
+            
+    if seller_name:
+        seller_name = str(seller_name).strip().lstrip('@')
+    else:
+        seller_name = "Jiran"
 
+    seller_phone = data.sellerPhone or ""
+    dist = data.distance if data.distance is not None else 0.5
     new_id = f"l_{uuid.uuid4().hex[:8]}"
     created_at = time.strftime("%Y-%m-%d %H:%M")
+
+    # 2. Upload image to Google Drive if base64 data is provided
     img_url = data.imageUrl or "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400"
+    base64_data = data.imageBase64
+    if not base64_data and img_url and img_url.startswith("data:image"):
+        base64_data = img_url
+
+    if base64_data:
+        try:
+            upload_payload = {
+                "action": "upload_file",
+                "base64": base64_data,
+                "filename": f"listing_{new_id}_{int(time.time())}.jpg",
+                "mimeType": "image/jpeg"
+            }
+            up_res = requests.post(APPS_SCRIPT_URL, json=upload_payload, timeout=60.0)
+            up_json = up_res.json()
+            if isinstance(up_json, dict):
+                if up_json.get("url"):
+                    img_url = up_json["url"]
+                elif up_json.get("fileId"):
+                    img_url = f"https://lh3.googleusercontent.com/d/{up_json['fileId']}"
+        except Exception as e:
+            print("Error uploading listing image to Google Drive:", e)
+    elif img_url.startswith("blob:"):
+        # Fallback to preset if blob could not be converted
+        img_url = "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400"
 
     row_data = {
         "id": new_id,
@@ -116,9 +159,9 @@ def create_listing(data: ListingCreate, background_tasks: BackgroundTasks, user_
         "price": data.price,
         "category": data.category,
         "condition": data.condition,
-        "distance": 0.5,
+        "distance": dist,
         "imageUrl": img_url,
-        "sellerId": user_id,
+        "sellerId": seller_id,
         "sellerName": seller_name,
         "sellerPhone": seller_phone,
         "sellerContactNotes": data.sellerContactNotes or "",

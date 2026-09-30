@@ -9,10 +9,11 @@ import {
   Image, 
   KeyboardAvoidingView, 
   Platform, 
-  Linking 
+  Linking,
+  Keyboard
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Send, Phone, MessageSquare, Check, Tag } from 'lucide-react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { X, Send, Phone, MessageSquare, Check, CheckCheck, Tag, MapPin } from 'lucide-react-native';
 import { useChatStore } from '../store/useChatStore';
 import { useUserStore } from '../store/useUserStore';
 
@@ -22,21 +23,26 @@ interface ChatModalProps {
   recipient: {
     id: string;
     name: string;
+    username?: string;
     avatarUrl?: string;
     phone?: string;
+    distance?: number;
+    radiusKm?: number;
   };
   itemContext?: {
     title: string;
     price?: number;
     category?: string;
+    distance?: number;
+    radiusKm?: number;
   };
 }
 
 const QUICK_REPLIES = [
   'Adakah masih ada / masih boleh diambil?',
-  'Boleh COD di surau / taman perumahan?',
+  'Boleh COD di sekitar kawasan kejiranan?',
   'Bila masa lapang untuk saya datang ambil?',
-  'Terima kasih banyak jiran!',
+  'Terima kasih banyak!',
 ];
 
 export default function ChatModal({
@@ -45,37 +51,144 @@ export default function ChatModal({
   recipient,
   itemContext,
 }: ChatModalProps) {
-  const { currentUser } = useUserStore();
-  const { conversations, getOrCreateConversation, sendMessage, markAsRead } = useChatStore();
+  const { currentUser, allUsers, fetchUsers } = useUserStore();
+  const { conversations, getOrCreateConversation, sendMessage, markAsRead, fetchConversations } = useChatStore();
+  const insets = useSafeAreaInsets();
 
   const [conversationId, setConversationId] = useState<string>('');
   const [inputText, setInputText] = useState('');
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
+  const textRef = useRef<string>('');
 
   const ctxTitle = itemContext?.title;
   const ctxPrice = itemContext?.price;
   const ctxCategory = itemContext?.category;
 
+  // Resolve Seller Username & Range Radius
+  const sellerUser = allUsers.find((u) => u.id === recipient.id);
+  const rawUsername = (
+    recipient.username || 
+    sellerUser?.username || 
+    (recipient.name && recipient.name !== 'Jiran' ? recipient.name : '') || 
+    sellerUser?.name || 
+    'seller'
+  ).replace(/^@/, '');
+  const sellerUsername = `@${rawUsername}`;
+
+  const displayRadius = recipient.radiusKm || sellerUser?.radiusKm || itemContext?.radiusKm || currentUser?.radiusKm || 5;
+  const displayDistance = itemContext?.distance !== undefined 
+    ? itemContext.distance 
+    : (recipient.distance !== undefined ? recipient.distance : 0.5);
+
+  // Load latest users so recipient username is always up-to-date
+  useEffect(() => {
+    if (visible) {
+      fetchUsers?.();
+    }
+  }, [visible]);
+
+  // Real-time polling while ChatModal is open so recipient automatically sees new messages!
+  useEffect(() => {
+    if (!visible) return;
+
+    // Immediately fetch latest messages silently
+    fetchConversations(true);
+
+    // Auto-poll every 2.5 seconds silently
+    const pollInterval = setInterval(() => {
+      fetchConversations(true);
+    }, 2500);
+
+    return () => clearInterval(pollInterval);
+  }, [visible]);
+
+  // Track keyboard visibility for exact input bar alignment
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setIsKeyboardVisible(true);
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 80);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   useEffect(() => {
     if (visible && recipient.id) {
       const convId = getOrCreateConversation(
-        recipient, 
+        {
+          id: recipient.id,
+          name: sellerUsername,
+          avatarUrl: recipient.avatarUrl || sellerUser?.avatarUrl,
+          phone: recipient.phone || sellerUser?.phone,
+        }, 
         ctxTitle ? { title: ctxTitle, price: ctxPrice, category: ctxCategory } : undefined
       );
       setConversationId(convId);
-      markAsRead(convId);
+      markAsRead(convId, recipient.id);
     }
-  }, [visible, recipient.id, ctxTitle, ctxPrice, ctxCategory]);
+  }, [visible, recipient.id, sellerUsername, ctxTitle, ctxPrice, ctxCategory]);
 
   const currentConv = conversations.find((c) => c.id === conversationId);
   const messages = currentConv?.messages || [];
 
-  const handleSend = (textToSend?: string) => {
-    const text = textToSend || inputText;
-    if (!text.trim() || !conversationId) return;
+  // When modal is open and incoming messages arrive, mark them as read automatically
+  useEffect(() => {
+    if (visible && conversationId && recipient.id && messages.length > 0) {
+      const hasUnread = messages.some((m) => {
+        const isMe = m.isMe || (currentUser ? m.senderId === currentUser.id : false);
+        return !isMe && !m.isRead;
+      });
+      if (hasUnread) {
+        markAsRead(conversationId, recipient.id);
+      }
+    }
+  }, [visible, conversationId, recipient.id, messages, currentUser]);
 
-    sendMessage(conversationId, text, currentUser.id, currentUser.name);
+  // Auto-scroll to bottom whenever new message arrives (either sent or received)
+  const prevMsgCountRef = useRef(messages.length);
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current) {
+      prevMsgCountRef.current = messages.length;
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages.length]);
+
+  const handleSend = (textToSend?: string) => {
+    const text = (textToSend || inputText || textRef.current || '').trim();
+    if (!text) return;
+
+    const activeConvId = conversationId || getOrCreateConversation(
+      {
+        id: recipient.id,
+        name: sellerUsername,
+        avatarUrl: recipient.avatarUrl || sellerUser?.avatarUrl,
+        phone: recipient.phone || sellerUser?.phone,
+      }, 
+      ctxTitle ? { title: ctxTitle, price: ctxPrice, category: ctxCategory } : undefined
+    );
+
+    const senderId = currentUser?.id || 'u1';
+    const senderName = currentUser?.username ? `@${currentUser.username}` : (currentUser?.name || 'Saya');
+
+    sendMessage(activeConvId, text, senderId, senderName);
     setInputText('');
+    textRef.current = '';
+    inputRef.current?.clear();
 
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -83,11 +196,12 @@ export default function ChatModal({
   };
 
   const handleOpenWhatsApp = () => {
-    if (!recipient.phone) return;
-    const cleanPhone = recipient.phone.replace(/[^0-9]/g, '');
+    const targetPhone = recipient.phone || sellerUser?.phone;
+    if (!targetPhone) return;
+    const cleanPhone = targetPhone.replace(/[^0-9]/g, '');
     const internationalPhone = cleanPhone.startsWith('0') ? '6' + cleanPhone : cleanPhone;
     const url = `whatsapp://send?phone=${internationalPhone}&text=${encodeURIComponent(
-      `Salam ${recipient.name}, saya jiran dari NeighbourLoop mengenai ${itemContext?.title || 'perkara ini'}.`
+      `Salam ${sellerUsername}, saya berminat dengan "${itemContext?.title || 'iklan anda'}" di NeighbourLoop (Radius ${displayRadius} km).`
     )}`;
     Linking.openURL(url).catch(() => {
       Linking.openURL(`https://wa.me/${internationalPhone}`);
@@ -95,47 +209,65 @@ export default function ChatModal({
   };
 
   const handleCall = () => {
-    if (!recipient.phone) return;
-    Linking.openURL(`tel:${recipient.phone}`);
+    const targetPhone = recipient.phone || sellerUser?.phone;
+    if (!targetPhone) return;
+    Linking.openURL(`tel:${targetPhone}`);
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView className="flex-1 bg-gray-50">
+    <Modal 
+      visible={visible} 
+      animationType="slide" 
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView edges={['top']} className="flex-1 bg-white">
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-          className="flex-1"
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
           {/* Chat Header */}
-          <View className="bg-white px-4 py-3 border-b border-gray-200 flex-row items-center justify-between shadow-sm">
+          <View 
+            className="bg-white px-4 pb-3 border-b border-gray-200 flex-row items-center justify-between shadow-xs"
+            style={{
+              paddingTop: Platform.OS === 'ios' ? Math.max(insets.top, 52) : 14,
+            }}
+          >
             <View className="flex-row items-center flex-1 mr-2">
               <Image
                 source={{
-                  uri: recipient.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+                  uri: recipient.avatarUrl || sellerUser?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
                 }}
-                className="w-10 h-10 rounded-full mr-3 border border-gray-200"
+                className="w-10 h-10 rounded-full mr-3 border border-gray-200 bg-gray-100"
               />
               <View className="flex-1">
                 <Text className="text-base font-bold text-gray-900" numberOfLines={1}>
-                  {recipient.name}
+                  {sellerUsername}
                 </Text>
-                <View className="flex-row items-center">
-                  <View className="w-2 h-2 rounded-full bg-green-500 mr-1.5" />
-                  <Text className="text-[11px] text-green-700 font-semibold">Aktif Dalam Komuniti</Text>
+                <View className="flex-row items-center flex-wrap mt-0.5">
+                  <View className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5" />
+                  <Text className="text-[11px] text-emerald-800 font-semibold">
+                    Radius: {displayRadius} km
+                  </Text>
+                  <Text className="text-[11px] text-gray-400 mx-1.5">•</Text>
+                  <Text className="text-[11px] text-gray-600 font-medium">
+                    ~{displayDistance} km dari anda
+                  </Text>
                 </View>
               </View>
             </View>
 
             {/* Action Buttons: WhatsApp / Call & Close */}
             <View className="flex-row items-center">
-              {recipient.phone ? (
+              {(recipient.phone || sellerUser?.phone) ? (
                 <>
                   <TouchableOpacity
                     onPress={handleOpenWhatsApp}
-                    className="p-2 bg-green-50 rounded-full border border-green-200 mr-1.5"
+                    className="p-2 bg-emerald-50 rounded-full border border-emerald-200 mr-1.5"
                     accessibilityLabel="WhatsApp"
                   >
-                    <MessageSquare size={18} color="#16a34a" />
+                    <MessageSquare size={18} color="#059669" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleCall}
@@ -147,7 +279,11 @@ export default function ChatModal({
                 </>
               ) : null}
 
-              <TouchableOpacity onPress={onClose} className="p-2 bg-gray-100 rounded-full">
+              <TouchableOpacity 
+                onPress={onClose} 
+                className="p-2 bg-gray-100 rounded-full"
+                accessibilityLabel="Tutup Chat"
+              >
                 <X size={20} color="#6b7280" />
               </TouchableOpacity>
             </View>
@@ -155,44 +291,45 @@ export default function ChatModal({
 
           {/* Context Card: Item / Topic Banner */}
           {itemContext ? (
-            <View className="bg-green-50/90 px-4 py-2 border-b border-green-100 flex-row items-center justify-between">
+            <View className="bg-emerald-50/90 px-4 py-2.5 border-b border-emerald-100 flex-row items-center justify-between">
               <View className="flex-row items-center flex-1 mr-2">
-                <Tag size={14} color="#16a34a" />
-                <Text className="text-xs font-bold text-green-950 ml-1.5" numberOfLines={1}>
+                <Tag size={15} color="#059669" />
+                <Text className="text-xs font-bold text-emerald-950 ml-1.5" numberOfLines={1}>
                   {itemContext.title}
                 </Text>
-              </View>
-              {itemContext.price !== undefined ? (
-                <Text className="text-xs font-black text-green-800">
-                  RM {itemContext.price.toFixed(0)}
-                </Text>
-              ) : (
-                <View className="bg-green-200 px-2 py-0.5 rounded-full">
-                  <Text className="text-[10px] font-bold text-green-800">
-                    {itemContext.category || 'Komuniti'}
+                {itemContext.price != null && !isNaN(Number(itemContext.price)) ? (
+                  <Text className="text-xs font-black text-emerald-700 ml-2">
+                    RM {Number(itemContext.price).toFixed(0)}
                   </Text>
-                </View>
-              )}
+                ) : null}
+              </View>
+              <View className="bg-emerald-200/80 px-2 py-0.5 rounded-full flex-row items-center">
+                <MapPin size={10} color="#065f46" />
+                <Text className="text-[10px] font-bold text-emerald-900 ml-1">
+                  Radius {displayRadius} km
+                </Text>
+              </View>
             </View>
           ) : null}
 
           {/* Messages Feed */}
           <ScrollView
             ref={scrollViewRef}
-            className="flex-1 px-4 py-3"
+            className="flex-1 px-4 py-3 bg-slate-50"
             contentContainerStyle={{ paddingBottom: 15 }}
+            keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
           >
             <View className="items-center my-2">
-              <View className="bg-gray-200/80 px-3 py-1 rounded-full">
-                <Text className="text-[11px] text-gray-600 font-medium">
-                  Perbualan Selamat Kejiranan NeighbourLoop
+              <View className="bg-slate-200/80 px-3 py-1 rounded-full">
+                <Text className="text-[11px] text-slate-600 font-medium">
+                  Perbualan Komuniti NeighbourLoop • Radius {displayRadius} km
                 </Text>
               </View>
             </View>
 
             {messages.map((msg) => {
-              const isMe = msg.isMe || msg.senderId === currentUser.id;
+              const isMe = msg.isMe || (currentUser ? msg.senderId === currentUser.id : false);
               return (
                 <View
                   key={msg.id}
@@ -201,8 +338,8 @@ export default function ChatModal({
                   <View
                     className={`rounded-2xl px-4 py-2.5 ${
                       isMe
-                        ? 'bg-green-700 rounded-tr-xs'
-                        : 'bg-white rounded-tl-xs border border-gray-200 shadow-sm'
+                        ? 'bg-emerald-600 rounded-tr-xs'
+                        : 'bg-white rounded-tl-xs border border-gray-200 shadow-xs'
                     }`}
                   >
                     {!isMe && (
@@ -217,11 +354,17 @@ export default function ChatModal({
                     </Text>
                     <View className="flex-row items-center justify-end mt-1">
                       <Text
-                        className={`text-[9px] ${isMe ? 'text-green-200' : 'text-gray-400'}`}
+                        className={`text-[9px] ${isMe ? 'text-emerald-200' : 'text-gray-400'}`}
                       >
                         {msg.timestamp}
                       </Text>
-                      {isMe && <Check size={10} color="#bbf7d0" className="ml-1" />}
+                      {isMe && (
+                        msg.isRead ? (
+                          <CheckCheck size={13} color="#67e8f9" style={{ marginLeft: 4 }} />
+                        ) : (
+                          <Check size={11} color="#bbf7d0" style={{ marginLeft: 4 }} />
+                        )
+                      )}
                     </View>
                   </View>
                 </View>
@@ -231,12 +374,16 @@ export default function ChatModal({
 
           {/* Quick Replies Carousel */}
           <View className="bg-white border-t border-gray-100 py-2 px-3">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               {QUICK_REPLIES.map((reply, idx) => (
                 <TouchableOpacity
                   key={idx}
                   onPress={() => handleSend(reply)}
-                  className="mr-2 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200"
+                  className="mr-2 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200 active:bg-gray-200"
                 >
                   <Text className="text-xs text-gray-700 font-medium">{reply}</Text>
                 </TouchableOpacity>
@@ -245,24 +392,42 @@ export default function ChatModal({
           </View>
 
           {/* Bottom Chat Input Bar */}
-          <View className="bg-white px-4 py-3 border-t border-gray-200 flex-row items-center">
+          <View 
+            className="bg-white px-4 pt-2.5 border-t border-gray-200 flex-row items-center"
+            style={{ 
+              paddingBottom: isKeyboardVisible 
+                ? (Platform.OS === 'ios' ? 10 : 10) 
+                : Math.max(insets.bottom, 12) 
+            }}
+          >
             <TextInput
-              placeholder={`Mesej kepada ${recipient.name}...`}
+              ref={inputRef}
+              placeholder={`Mesej kepada ${sellerUsername}...`}
               placeholderTextColor="#9ca3af"
               value={inputText}
-              onChangeText={setInputText}
-              className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm text-gray-900 mr-2"
-              multiline
-              maxLength={500}
+              onChangeText={(val) => {
+                textRef.current = val;
+                setInputText(val);
+              }}
+              onChange={(e) => {
+                const val = e.nativeEvent.text || '';
+                textRef.current = val;
+                setInputText(val);
+              }}
+              className="flex-1 bg-gray-100 rounded-2xl px-4 py-2.5 text-sm text-gray-900 mr-2 max-h-24"
+              returnKeyType="send"
+              onSubmitEditing={() => handleSend()}
+              blurOnSubmit={false}
             />
             <TouchableOpacity
               onPress={() => handleSend()}
-              disabled={!inputText.trim()}
-              className={`w-10 h-10 rounded-full items-center justify-center ${
-                inputText.trim() ? 'bg-green-700 shadow-md shadow-green-700/30' : 'bg-gray-200'
-              }`}
+              activeOpacity={0.8}
+              className="w-11 h-11 rounded-full items-center justify-center shadow-md shadow-emerald-700/30"
+              style={{
+                backgroundColor: (inputText.trim().length > 0 || textRef.current.trim().length > 0) ? '#059669' : '#10b981',
+              }}
             >
-              <Send size={18} color={inputText.trim() ? '#ffffff' : '#9ca3af'} />
+              <Send size={18} color="#ffffff" />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>

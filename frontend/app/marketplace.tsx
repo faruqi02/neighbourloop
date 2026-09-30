@@ -9,11 +9,12 @@ import {
   Modal,
   Linking,
   ActivityIndicator,
-  Dimensions
+  Dimensions,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useNavigation } from 'expo-router';
-import { Search, Plus, MapPin, X, MessageCircle, Phone, Tag, CheckCircle2, ChevronLeft } from 'lucide-react-native';
+import { Search, Plus, MapPin, X, MessageCircle, Phone, Tag, CheckCircle2, ChevronLeft, Trash2 } from 'lucide-react-native';
 import { useMarketStore } from '../store/useMarketStore';
 import { useUserStore } from '../store/useUserStore';
 import { Listing } from '../types';
@@ -31,13 +32,14 @@ const PRESET_IMAGES = [
 ];
 
 export default function MarketplaceScreen() {
-  const { listings, addListing, fetchListings, loading } = useMarketStore();
-  const { currentUser } = useUserStore();
+  const { listings, addListing, deleteListing, fetchListings, loading } = useMarketStore();
+  const { currentUser, allUsers, fetchUsers } = useUserStore();
   const router = useRouter();
   const navigation = useNavigation();
 
   useEffect(() => {
     fetchListings();
+    fetchUsers?.();
   }, []);
 
   if (!currentUser) return null;
@@ -57,29 +59,77 @@ export default function MarketplaceScreen() {
   const [category, setCategory] = useState<'Perabot' | 'Elektronik' | 'Pakaian' | 'Lain-lain'>('Perabot');
   const [condition, setCondition] = useState<'Baru' | 'Seperti Baru' | 'Terpakai'>('Terpakai');
   const [selectedImage, setSelectedImage] = useState(PRESET_IMAGES[0]);
+  const [selectedImageBase64, setSelectedImageBase64] = useState<string | undefined>(undefined);
+  const [isUploading, setIsUploading] = useState(false);
   const [sellerPhone, setSellerPhone] = useState(currentUser.phone || '');
-  const [sellerContactNotes, setSellerContactNotes] = useState(currentUser.contactNotes || '');
+  const [sellerContactNotes, setSellerContactNotes] = useState('');
 
   // Success Feedback
   const [successVisible, setSuccessVisible] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Helper to ensure URI is converted to Base64 data URL
+  const ensureBase64 = async (uri: string): Promise<string | undefined> => {
+    if (!uri) return undefined;
+    if (uri.startsWith('data:image')) return uri;
+    try {
+      const res = await fetch(uri);
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = () => resolve(undefined);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return undefined;
+    }
+  };
+
   // Interactive Chat Modal
   const [chatModalVisible, setChatModalVisible] = useState(false);
-  const [activeChatRecipient, setActiveChatRecipient] = useState<{ id: string; name: string; phone?: string } | null>(null);
-  const [activeChatContext, setActiveChatContext] = useState<{ title: string; price?: number; category?: string } | null>(null);
+  const [activeChatRecipient, setActiveChatRecipient] = useState<{ 
+    id: string; 
+    name: string; 
+    username?: string;
+    phone?: string;
+    distance?: number;
+    radiusKm?: number;
+  } | null>(null);
+  const [activeChatContext, setActiveChatContext] = useState<{ 
+    title: string; 
+    price?: number; 
+    category?: string;
+    distance?: number;
+    radiusKm?: number;
+  } | null>(null);
 
   const handleOpenChat = () => {
     if (!selectedListing) return;
+    const seller = allUsers.find((u) => u.id === selectedListing.sellerId);
+    const sellerUsername = (
+      seller?.username ||
+      (selectedListing.sellerName !== 'Jiran' ? selectedListing.sellerName : '') ||
+      seller?.name ||
+      'penjual'
+    ).replace(/^@/, '');
+
     const recipient = {
       id: selectedListing.sellerId,
-      name: selectedListing.sellerName,
+      name: `@${sellerUsername}`,
+      username: sellerUsername,
       phone: selectedListing.sellerPhone,
+      distance: selectedListing.distance,
+      radiusKm: seller?.radiusKm || currentUser?.radiusKm || 5,
     };
     const context = {
       title: selectedListing.title,
       price: selectedListing.price,
       category: 'Marketplace',
+      distance: selectedListing.distance,
+      radiusKm: seller?.radiusKm || currentUser?.radiusKm || 5,
     };
     setSelectedListing(null);
     setActiveChatRecipient(recipient);
@@ -97,32 +147,50 @@ export default function MarketplaceScreen() {
     return matchCat && matchSearch;
   });
 
-  const handleCreateListing = () => {
+  const handleCreateListing = async () => {
     if (!title.trim() || !price) {
       alert('Sila masukkan tajuk dan harga barang.');
       return;
     }
 
-    addListing({
-      title,
-      description: description || 'Barangan preloved berkeadaan elok.',
-      price: parseFloat(price) || 0,
-      category,
-      condition,
-      distance: 0.8,
-      imageUrl: selectedImage || PRESET_IMAGES[0],
-      sellerId: currentUser.id,
-      sellerName: currentUser.name,
-      sellerPhone: sellerPhone.trim() || undefined,
-      sellerContactNotes: sellerContactNotes.trim() || undefined,
-    });
+    setIsUploading(true);
 
-    setCreateModalVisible(false);
-    setTitle('');
-    setDescription('');
-    setPrice('');
-    setSuccessMsg('Barangan anda berjaya dimuat naik ke ruangan jualan kejiranan.');
-    setSuccessVisible(true);
+    try {
+      let base64 = selectedImageBase64;
+      if (!base64 && selectedImage && (selectedImage.startsWith('blob:') || selectedImage.startsWith('file:') || selectedImage.startsWith('data:image'))) {
+        base64 = await ensureBase64(selectedImage);
+      }
+
+      const sellerUsername = (currentUser.username || currentUser.name || 'Jiran').replace(/^@/, '');
+
+      await addListing({
+        title,
+        description: description || 'Barangan preloved berkeadaan elok.',
+        price: parseFloat(price) || 0,
+        category,
+        condition,
+        distance: 0.8,
+        imageUrl: selectedImage || PRESET_IMAGES[0],
+        imageBase64: base64,
+        sellerId: currentUser.id,
+        sellerName: sellerUsername,
+        sellerPhone: sellerPhone.trim() || undefined,
+        sellerContactNotes: sellerContactNotes.trim() || undefined,
+      });
+
+      setCreateModalVisible(false);
+      setTitle('');
+      setDescription('');
+      setPrice('');
+      setSelectedImage(PRESET_IMAGES[0]);
+      setSelectedImageBase64(undefined);
+      setSuccessMsg('Barangan anda berjaya dimuat naik ke ruangan jualan kejiranan.');
+      setSuccessVisible(true);
+    } catch (err) {
+      alert('Ralat semasa memuat naik iklan jualan.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleOpenWhatsApp = (phone?: string) => {
@@ -260,19 +328,33 @@ export default function MarketplaceScreen() {
                   {/* Price Tag (Big, bold) */}
                   <View className="flex-row items-baseline mb-1">
                     <Text className="text-base font-black text-emerald-600">
-                      RM {item.price.toFixed(0)}
+                      RM {Number(item.price || 0).toFixed(0)}
                     </Text>
                   </View>
 
                   {/* Seller footer */}
-                  <View className="flex-row items-center justify-between pt-1 border-t border-slate-100">
-                    <Text className="text-[11px] text-slate-500 font-medium flex-1 mr-1" numberOfLines={1}>
-                      {item.sellerName}
-                    </Text>
-                    <View className="bg-blue-50 px-1.5 py-0.5 rounded">
-                      <Text className="text-[9px] text-blue-700 font-bold">Jual</Text>
-                    </View>
-                  </View>
+                  {(() => {
+                    const isMyItem = item.sellerId === currentUser.id || 
+                      (currentUser.username && item.sellerName.replace(/^@/, '').toLowerCase() === currentUser.username.toLowerCase()) ||
+                      (currentUser.name && item.sellerName.toLowerCase() === currentUser.name.toLowerCase());
+
+                    return (
+                      <View className="flex-row items-center justify-between pt-1 border-t border-slate-100">
+                        <Text className="text-[11px] text-slate-500 font-medium flex-1 mr-1" numberOfLines={1}>
+                          {isMyItem ? `${item.sellerName} (Anda)` : item.sellerName}
+                        </Text>
+                        {isMyItem ? (
+                          <View className="bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                            <Text className="text-[9px] text-emerald-700 font-bold">Iklan Anda</Text>
+                          </View>
+                        ) : (
+                          <View className="bg-blue-50 px-1.5 py-0.5 rounded">
+                            <Text className="text-[9px] text-blue-700 font-bold">Jual</Text>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })()}
                 </View>
               </TouchableOpacity>
             ))}
@@ -285,7 +367,7 @@ export default function MarketplaceScreen() {
       <TouchableOpacity
         onPress={() => {
           setSellerPhone(currentUser.phone || '');
-          setSellerContactNotes(currentUser.contactNotes || '');
+          setSellerContactNotes('');
           setCreateModalVisible(true);
         }}
         className="absolute bottom-6 right-6 bg-blue-600 px-5 py-3.5 rounded-full flex-row items-center shadow-lg shadow-blue-600/40"
@@ -314,7 +396,7 @@ export default function MarketplaceScreen() {
 
                 <View className="flex-row justify-between items-center mb-2">
                   <Text className="text-2xl font-black text-green-700">
-                    RM {selectedListing.price.toFixed(0)}
+                    RM {Number(selectedListing.price || 0).toFixed(0)}
                   </Text>
                   <View className="bg-blue-100 px-3 py-1 rounded-full">
                     <Text className="text-blue-800 font-bold text-xs">
@@ -331,47 +413,119 @@ export default function MarketplaceScreen() {
                 </Text>
 
                 {/* Seller & Contact Details Box */}
-                <View className="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-200">
-                  <Text className="text-xs text-gray-400 font-semibold uppercase mb-1">Penjual</Text>
-                  <Text className="text-sm font-bold text-gray-800">{selectedListing.sellerName}</Text>
-                  <View className="flex-row items-center mt-1">
-                    <MapPin size={14} color="#16a34a" />
-                    <Text className="text-xs text-gray-600 ml-1">
-                      Berdekatan ({selectedListing.distance} km dari lokasi anda)
-                    </Text>
-                  </View>
+                {(() => {
+                  const isSelectedMyItem = selectedListing.sellerId === currentUser.id ||
+                    (currentUser.username && selectedListing.sellerName.replace(/^@/, '').toLowerCase() === currentUser.username.toLowerCase()) ||
+                    (currentUser.name && selectedListing.sellerName.toLowerCase() === currentUser.name.toLowerCase());
 
-                  {/* Optional Seller Contact Details */}
-                  {selectedListing.sellerPhone ? (
-                    <View className="mt-2.5 pt-2.5 border-t border-gray-200 flex-row justify-between items-center">
-                      <View>
-                        <Text className="text-[11px] text-gray-400 uppercase font-semibold">No. WhatsApp / Telefon</Text>
-                        <Text className="text-xs font-bold text-gray-800">{selectedListing.sellerPhone}</Text>
-                        {selectedListing.sellerContactNotes ? (
-                          <Text className="text-[11px] text-gray-500 italic mt-0.5">{selectedListing.sellerContactNotes}</Text>
+                  const sellerUser = allUsers.find((u) => u.id === selectedListing.sellerId);
+                  const displayUsername = sellerUser?.username || (selectedListing.sellerName !== 'Jiran' ? selectedListing.sellerName.replace(/^@/, '') : 'penjual');
+
+                  return (
+                    <>
+                      <View className="bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-200">
+                        <View className="flex-row justify-between items-center mb-1">
+                          <Text className="text-xs text-gray-400 font-semibold uppercase">Penjual</Text>
+                          {isSelectedMyItem && (
+                            <View className="bg-emerald-100 px-2 py-0.5 rounded-full">
+                              <Text className="text-[10px] font-bold text-emerald-800">Iklan Anda</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text className="text-sm font-bold text-gray-800">
+                          @{displayUsername} {isSelectedMyItem ? '(Anda)' : ''}
+                        </Text>
+                        <View className="flex-row items-center mt-1">
+                          <MapPin size={14} color="#059669" />
+                          <Text className="text-xs text-gray-600 ml-1">
+                            {isSelectedMyItem 
+                              ? `Lokasi jualan anda • Radius ${sellerUser?.radiusKm || currentUser?.radiusKm || 5} km`
+                              : `Radius Komuniti: ${sellerUser?.radiusKm || currentUser?.radiusKm || 5} km • ~${selectedListing.distance} km dari lokasi anda`
+                            }
+                          </Text>
+                        </View>
+
+                        {/* Optional Seller Contact Details */}
+                        {selectedListing.sellerPhone ? (
+                          <View className="mt-2.5 pt-2.5 border-t border-gray-200 flex-row justify-between items-center">
+                            <View>
+                              <Text className="text-[11px] text-gray-400 uppercase font-semibold">No. WhatsApp / Telefon</Text>
+                              <Text className="text-xs font-bold text-gray-800">{selectedListing.sellerPhone}</Text>
+                              {selectedListing.sellerContactNotes ? (
+                                <Text className="text-[11px] text-gray-500 italic mt-0.5">{selectedListing.sellerContactNotes}</Text>
+                              ) : null}
+                            </View>
+                            {isSelectedMyItem ? (
+                              <View className="bg-emerald-100 px-2.5 py-1 rounded-lg">
+                                <Text className="text-[10px] font-bold text-emerald-800">Nombor Anda</Text>
+                              </View>
+                            ) : (
+                              <TouchableOpacity
+                                onPress={() => handleOpenWhatsApp(selectedListing.sellerPhone)}
+                                className="bg-green-600 px-3 py-1.5 rounded-xl flex-row items-center"
+                              >
+                                <Phone size={12} color="white" />
+                                <Text className="text-white text-xs font-bold ml-1">WhatsApp</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
                         ) : null}
                       </View>
-                      <TouchableOpacity
-                        onPress={() => handleOpenWhatsApp(selectedListing.sellerPhone)}
-                        className="bg-green-600 px-3 py-1.5 rounded-xl flex-row items-center"
-                      >
-                        <Phone size={12} color="white" />
-                        <Text className="text-white text-xs font-bold ml-1">WhatsApp</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
-                </View>
 
-                {/* Main Action: Chatbox Direct Launch */}
-                <TouchableOpacity
-                  onPress={handleOpenChat}
-                  className="w-full bg-blue-600 py-4 rounded-2xl flex-row justify-center items-center shadow-md shadow-blue-600/30 mb-3"
-                >
-                  <MessageCircle size={20} color="white" />
-                  <Text className="text-white font-bold text-base ml-2">
-                    Mesej Penjual (Chatbox)
-                  </Text>
-                </TouchableOpacity>
+                      {/* Main Action: 'You posted this' vs Chatbox */}
+                      {isSelectedMyItem ? (
+                        <View className="w-full bg-emerald-50 border border-emerald-200 py-3.5 px-4 rounded-2xl flex-row justify-between items-center mb-3 shadow-xs">
+                          <View className="flex-row items-center flex-1 mr-2">
+                            <View className="w-9 h-9 rounded-full bg-emerald-600 items-center justify-center mr-3 shadow-xs">
+                              <CheckCircle2 size={18} color="white" />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-emerald-950 font-bold text-sm">
+                                Anda Menyiarkan Iklan Ini
+                              </Text>
+                              <Text className="text-emerald-700 text-xs mt-0.5">
+                                You posted this • Iklan aktif di marketplace
+                              </Text>
+                            </View>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => {
+                              Alert.alert(
+                                'Padam Iklan',
+                                'Adakah anda pasti ingin memadamkan iklan barangan ini?',
+                                [
+                                  { text: 'Batal', style: 'cancel' },
+                                  { 
+                                    text: 'Padam', 
+                                    style: 'destructive',
+                                    onPress: async () => {
+                                      await deleteListing(selectedListing.id);
+                                      setSelectedListing(null);
+                                    }
+                                  }
+                                ]
+                              );
+                            }}
+                            className="bg-red-100/90 px-3 py-2 rounded-xl flex-row items-center active:bg-red-200"
+                          >
+                            <Trash2 size={14} color="#dc2626" />
+                            <Text className="text-xs font-bold text-red-600 ml-1">Padam</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          onPress={handleOpenChat}
+                          className="w-full bg-blue-600 py-4 rounded-2xl flex-row justify-center items-center shadow-md shadow-blue-600/30 mb-3"
+                        >
+                          <MessageCircle size={20} color="white" />
+                          <Text className="text-white font-bold text-base ml-2">
+                            Mesej Penjual (Chatbox)
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  );
+                })()}
               </ScrollView>
             </View>
           </View>
@@ -394,7 +548,10 @@ export default function MarketplaceScreen() {
               <ImagePickerButton
                 title="Pilih / Muat Naik Gambar Barang"
                 selectedImageUri={selectedImage}
-                onImageSelected={setSelectedImage}
+                onImageSelected={(uri, base64) => {
+                  setSelectedImage(uri);
+                  setSelectedImageBase64(base64);
+                }}
                 presetImages={PRESET_IMAGES}
               />
 
@@ -482,12 +639,22 @@ export default function MarketplaceScreen() {
                 className="bg-gray-100 rounded-xl px-4 py-3 mb-5 text-sm text-gray-900"
               />
 
-              {/* Submit Button (Clean, no points) */}
+              {/* Submit Button */}
               <TouchableOpacity
                 onPress={handleCreateListing}
-                className="w-full bg-blue-600 py-4 rounded-2xl items-center shadow-md shadow-blue-600/30"
+                disabled={isUploading}
+                className={`w-full py-4 rounded-2xl items-center shadow-md flex-row justify-center ${
+                  isUploading ? 'bg-blue-400' : 'bg-blue-600 shadow-blue-600/30'
+                }`}
               >
-                <Text className="text-white font-bold text-base">Siarkan Iklan Jualan</Text>
+                {isUploading ? (
+                  <>
+                    <ActivityIndicator size="small" color="#ffffff" />
+                    <Text className="text-white font-bold text-base ml-2">Menyimpan & Memuat Naik...</Text>
+                  </>
+                ) : (
+                  <Text className="text-white font-bold text-base">Siarkan Iklan Jualan</Text>
+                )}
               </TouchableOpacity>
               <View className="h-6" />
             </ScrollView>

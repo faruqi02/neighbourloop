@@ -7,7 +7,7 @@ import bcrypt
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwitujRlYaYoxpd7UzD5Ieffo87pOarz_vTXwo9_mSPvf0cjcj9OHHUCIfUEQdjUQDU/exec"
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfZ19MpaNnKrMmgkwDGFhnZQ1Kjuo4n4UDM3rWcdHscIU9WesFKILxEGNlyH_hkJQv/exec"
 
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
@@ -30,17 +30,12 @@ def login(data: LoginRequest):
         print("Error fetching users for login:", e)
         raise HTTPException(status_code=500, detail="Database unavailable")
 
+    id_clean = data.identifier.strip().lower().lstrip('@')
     for u in users:
-        email = u.get("email", "")
-        phone = str(u.get("phone", ""))
-        username = str(u.get("username", ""))
-        # Match identifier (email, phone, or username)
-        id_clean = data.identifier.strip().lower()
-        if (
-            (email and email.lower() == id_clean)
-            or (phone and phone == data.identifier.strip())
-            or (username and username.lower() == id_clean.lstrip('@'))
-        ):
+        email = str(u.get("email", "")).strip().lower()
+        username = str(u.get("username", "")).strip().lower().lstrip('@')
+        # Match identifier (Email or Username only)
+        if (email and email == id_clean) or (username and username == id_clean):
             db_pass = str(u.get("password_hash", "") or u.get("password", ""))
             
             is_valid = False
@@ -53,26 +48,28 @@ def login(data: LoginRequest):
                     is_valid = True
 
             if is_valid:
-                # Map back to User schema
+                # Map back to User schema safely
                 raw_lat = u.get("lat")
                 raw_lng = u.get("lng")
+                raw_radius = u.get("radiusKm")
                 return User(
-                    id=u.get("id", ""),
-                    name=u.get("name", ""),
-                    email=email,
-                    username=username or (email.split('@')[0] if email else ""),
-                    phone=phone,
-                    location=u.get("location", ""),
+                    id=str(u.get("id", "")),
+                    name=str(u.get("name", "")),
+                    email=str(u.get("email", "")),
+                    username=str(u.get("username", "") or (email.split('@')[0] if email else "")),
+                    phone=str(u.get("phone", "")),
+                    location=str(u.get("location", "")),
                     lat=float(raw_lat) if raw_lat not in [None, ""] else None,
                     lng=float(raw_lng) if raw_lng not in [None, ""] else None,
-                    avatarUrl=u.get("avatarUrl"),
-                    role=u.get("role", "User"),
-                    status=u.get("status", "Aktif")
+                    radiusKm=int(raw_radius) if raw_radius not in [None, ""] else 5,
+                    avatarUrl=u.get("avatarUrl") or None,
+                    role=str(u.get("role", "User")),
+                    status=str(u.get("status", "Aktif"))
                 )
             else:
                 raise HTTPException(status_code=401, detail="Kata laluan salah")
 
-    raise HTTPException(status_code=404, detail="Pengguna tidak dijumpai")
+    raise HTTPException(status_code=404, detail="Emel atau Username tidak dijumpai")
 
 def format_phone(phone: str) -> str:
     if not phone: return phone

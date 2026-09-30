@@ -228,8 +228,8 @@ export default function AdminDashboardModal({ visible, onClose }: AdminDashboard
                     <MapPin size={12} color="#94a3b8" />
                     <Text className="text-slate-300 text-xs ml-1.5">{u.location} (Radius: {u.radiusKm} km)</Text>
                   </View>
-                  {u.contactNotes ? (
-                    <Text className="text-slate-400 text-[11px] mt-1 italic">Nota: "{u.contactNotes}"</Text>
+                  {u.lat && u.lng ? (
+                    <Text className="text-emerald-400 text-[11px] mt-1 font-medium">GPS: {u.lat.toFixed(4)}, {u.lng.toFixed(4)}</Text>
                   ) : null}
                 </View>
 

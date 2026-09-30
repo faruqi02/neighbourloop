@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUserStore } from '../store/useUserStore';
-import { LogIn, Key, Mail, Recycle, Eye, EyeOff } from 'lucide-react-native';
+import { LogIn, Key, Mail, Recycle, Eye, EyeOff, AtSign } from 'lucide-react-native';
 import Constants from 'expo-constants';
 
 export default function LoginScreen() {
@@ -56,18 +56,18 @@ export default function LoginScreen() {
         
         if (!fallbackRes.ok) {
            const errData = await fallbackRes.json().catch(() => ({}));
-           throw new Error(errData.detail || 'Sila semak semula email & kata laluan anda.');
+           throw new Error(errData.detail || 'Sila semak semula emel/username & kata laluan anda.');
         }
         
         const userData = await fallbackRes.json();
         setCurrentUser(userData);
-        router.replace('/(tabs)/');
+        router.replace('/(tabs)' as any);
         return;
       }
 
       const userData = await response.json();
       setCurrentUser(userData);
-      router.replace('/(tabs)/');
+      router.replace('/(tabs)' as any);
     } catch (err: any) {
       setError(err.message || 'Gagal menyambung ke pelayan (server).');
     } finally {
@@ -110,7 +110,7 @@ export default function LoginScreen() {
           <View className="space-y-5">
             <View>
               <Text className="text-xs font-bold text-slate-500 uppercase mb-2 ml-1 tracking-wider">
-                Emel atau No. Telefon
+                Emel atau Username
               </Text>
               <View 
                 className={`flex-row items-center bg-white rounded-xl px-4 h-14 shadow-sm shadow-slate-100 border ${
@@ -118,15 +118,15 @@ export default function LoginScreen() {
                 }`}
                 style={{ borderWidth: isEmailFocused ? 2 : 1 }}
               >
-                <Mail size={20} color={isEmailFocused ? '#00875A' : '#94A3B8'} />
+                <AtSign size={20} color={isEmailFocused ? '#00875A' : '#94A3B8'} />
                 <TextInput
                   className="flex-1 px-3 text-base text-[#1E293B] font-medium h-full outline-none"
-                  placeholder="admin@neighbourloop.com"
+                  placeholder="admin@neighbourloop.com atau username"
                   placeholderTextColor="#CBD5E1"
                   value={identifier}
                   onChangeText={setIdentifier}
                   autoCapitalize="none"
-                  keyboardType="email-address"
+                  autoCorrect={false}
                   onFocus={() => setIsEmailFocused(true)}
                   onBlur={() => setIsEmailFocused(false)}
                 />

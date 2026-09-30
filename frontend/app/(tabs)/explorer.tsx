@@ -9,7 +9,8 @@ import {
   Modal, 
   Linking, 
   RefreshControl,
-  Dimensions
+  Dimensions,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -20,7 +21,9 @@ import {
   Phone, 
   MessageSquare, 
   ShoppingBag, 
-  SlidersHorizontal
+  SlidersHorizontal,
+  CheckCircle2,
+  Trash2
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useMarketStore } from '../../store/useMarketStore';
@@ -39,9 +42,9 @@ const CATEGORIES = [
 
 export default function ExplorerScreen() {
   const router = useRouter();
-  const { listings, fetchListings, loading: marketLoading } = useMarketStore();
-  const { donations, fetchRecycleData, loading: recycleLoading } = useRecycleStore();
-  const { currentUser } = useUserStore();
+  const { listings, fetchListings, deleteListing, loading: marketLoading } = useMarketStore();
+  const { donations, fetchRecycleData, deleteDonation, loading: recycleLoading } = useRecycleStore();
+  const { currentUser, allUsers, fetchUsers } = useUserStore();
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
@@ -53,12 +56,17 @@ export default function ExplorerScreen() {
   const [activeChatRecipient, setActiveChatRecipient] = useState<{
     id: string;
     name: string;
+    username?: string;
     phone?: string;
+    distance?: number;
+    radiusKm?: number;
   } | null>(null);
   const [activeChatContext, setActiveChatContext] = useState<{
     title: string;
     price?: number;
     category?: string;
+    distance?: number;
+    radiusKm?: number;
   } | null>(null);
 
   const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -145,15 +153,29 @@ export default function ExplorerScreen() {
 
   const handleOpenChat = (item: any) => {
     setSelectedItem(null);
+    const seller = allUsers.find((u) => u.id === (item.sellerId || item.donorId));
+    const sellerUsername = (
+      seller?.username ||
+      (item.sellerName && item.sellerName !== 'Jiran' ? item.sellerName : '') ||
+      (item.donorName && item.donorName !== 'Jiran' ? item.donorName : '') ||
+      seller?.name ||
+      'penjual'
+    ).replace(/^@/, '');
+
     setActiveChatRecipient({
       id: item.sellerId || item.donorId,
-      name: item.sellerName || item.donorName || 'Jiran',
+      name: `@${sellerUsername}`,
+      username: sellerUsername,
       phone: item.sellerPhone || item.donorPhone,
+      distance: item.distance,
+      radiusKm: seller?.radiusKm || currentUser?.radiusKm || 5,
     });
     setActiveChatContext({
       title: item.title,
       price: item.isDonation ? 0 : Number(item.price),
       category: item.category,
+      distance: item.distance,
+      radiusKm: seller?.radiusKm || currentUser?.radiusKm || 5,
     });
     setChatModalVisible(true);
   };
@@ -341,16 +363,40 @@ export default function ExplorerScreen() {
                   </View>
 
                   {/* Seller & Location footer */}
-                  <View className="flex-row items-center justify-between pt-1 border-t border-slate-100">
-                    <Text className="text-[11px] text-slate-500 font-medium flex-1 mr-1" numberOfLines={1}>
-                      {item.sellerName || 'Jiran'}
-                    </Text>
-                    <View className="bg-slate-100 px-1.5 py-0.5 rounded">
-                      <Text className="text-[9px] text-slate-600 font-bold">
-                        {item.isDonation ? 'Derma' : 'Jual'}
-                      </Text>
-                    </View>
-                  </View>
+                  {(() => {
+                    const anyItem = item as any;
+                    const isMyItem = (anyItem.sellerId && currentUser?.id && anyItem.sellerId === currentUser.id) ||
+                      (anyItem.donorId && currentUser?.id && anyItem.donorId === currentUser.id) ||
+                      (currentUser?.username && (
+                        (anyItem.sellerName && anyItem.sellerName.replace(/^@/, '').toLowerCase() === currentUser.username.toLowerCase()) ||
+                        (anyItem.donorName && anyItem.donorName.replace(/^@/, '').toLowerCase() === currentUser.username.toLowerCase())
+                      )) ||
+                      (currentUser?.name && (
+                        (anyItem.sellerName && anyItem.sellerName.toLowerCase() === currentUser.name.toLowerCase()) ||
+                        (anyItem.donorName && anyItem.donorName.toLowerCase() === currentUser.name.toLowerCase())
+                      ));
+
+                    const displayName = anyItem.sellerName || anyItem.donorName || 'Jiran';
+
+                    return (
+                      <View className="flex-row items-center justify-between pt-1 border-t border-slate-100">
+                        <Text className="text-[11px] text-slate-500 font-medium flex-1 mr-1" numberOfLines={1}>
+                          {isMyItem ? `${displayName} (Anda)` : displayName}
+                        </Text>
+                        {isMyItem ? (
+                          <View className="bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                            <Text className="text-[9px] text-emerald-700 font-bold">Iklan Anda</Text>
+                          </View>
+                        ) : (
+                          <View className="bg-slate-100 px-1.5 py-0.5 rounded">
+                            <Text className="text-[9px] text-slate-600 font-bold">
+                              {item.isDonation ? 'Derma' : 'Jual'}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })()}
                 </View>
               </TouchableOpacity>
             ))}
@@ -426,51 +472,144 @@ export default function ExplorerScreen() {
                 </Text>
 
                 {/* Seller & Contact Box */}
-                <View className="bg-slate-50 rounded-2xl p-4 mb-5 border border-slate-200/80">
-                  <Text className="text-[10px] text-slate-400 font-bold uppercase mb-1">
-                    {selectedItem.isDonation ? 'Penyumbang' : 'Penjual'}
-                  </Text>
-                  <Text className="text-sm font-bold text-slate-900">{selectedItem.sellerName}</Text>
-                  <View className="flex-row items-center mt-1">
-                    <MapPin size={13} color="#059669" />
-                    <Text className="text-xs text-slate-600 ml-1">
-                      Kira-kira {selectedItem.distance || 1.2} km dari zon anda
-                    </Text>
-                  </View>
+                {(() => {
+                  const isSelectedMyItem = (selectedItem.sellerId && currentUser?.id && selectedItem.sellerId === currentUser.id) ||
+                    (selectedItem.donorId && currentUser?.id && selectedItem.donorId === currentUser.id) ||
+                    (currentUser?.username && (
+                      (selectedItem.sellerName && selectedItem.sellerName.replace(/^@/, '').toLowerCase() === currentUser.username.toLowerCase()) ||
+                      (selectedItem.donorName && selectedItem.donorName.replace(/^@/, '').toLowerCase() === currentUser.username.toLowerCase())
+                    )) ||
+                    (currentUser?.name && (
+                      (selectedItem.sellerName && selectedItem.sellerName.toLowerCase() === currentUser.name.toLowerCase()) ||
+                      (selectedItem.donorName && selectedItem.donorName.toLowerCase() === currentUser.name.toLowerCase())
+                    ));
 
-                  {selectedItem.sellerContactNotes ? (
-                    <Text className="text-xs text-slate-500 italic mt-2 bg-white p-2.5 rounded-xl border border-slate-100">
-                      Nota: "{selectedItem.sellerContactNotes}"
-                    </Text>
-                  ) : null}
-                </View>
+                  const ownerUser = allUsers.find((u) => u.id === (selectedItem.sellerId || selectedItem.donorId));
+                  const displayUsername = ownerUser?.username || 
+                    (selectedItem.sellerName && selectedItem.sellerName !== 'Jiran' ? selectedItem.sellerName.replace(/^@/, '') : 
+                    (selectedItem.donorName && selectedItem.donorName !== 'Jiran' ? selectedItem.donorName.replace(/^@/, '') : 'komuniti'));
 
-                {/* Action Buttons: Chat & WhatsApp */}
-                <View className="space-y-2.5 mb-6">
-                  {/* Chatbox in App Button */}
-                  <TouchableOpacity
-                    onPress={() => handleOpenChat(selectedItem)}
-                    className="w-full bg-emerald-600 py-3.5 rounded-2xl flex-row items-center justify-center shadow-md shadow-emerald-600/30"
-                  >
-                    <MessageSquare size={18} color="white" />
-                    <Text className="text-white font-bold text-sm ml-2">
-                      Mesej {selectedItem.isDonation ? 'Penyumbang' : 'Penjual'} (Chatbox)
-                    </Text>
-                  </TouchableOpacity>
+                  return (
+                    <>
+                      <View className="bg-slate-50 rounded-2xl p-4 mb-5 border border-slate-200/80">
+                        <View className="flex-row justify-between items-center mb-1">
+                          <Text className="text-[10px] text-slate-400 font-bold uppercase">
+                            {selectedItem.isDonation ? 'Penyumbang' : 'Penjual'}
+                          </Text>
+                          {isSelectedMyItem && (
+                            <View className="bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                              <Text className="text-[10px] font-bold text-emerald-800">Iklan Anda</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text className="text-sm font-bold text-slate-900">
+                          @{displayUsername} {isSelectedMyItem ? '(Anda)' : ''}
+                        </Text>
+                        <View className="flex-row items-center mt-1">
+                          <MapPin size={13} color="#059669" />
+                          <Text className="text-xs text-slate-600 ml-1">
+                            {isSelectedMyItem
+                              ? `Lokasi jualan anda • Radius ${ownerUser?.radiusKm || currentUser?.radiusKm || 5} km`
+                              : `Radius Komuniti: ${ownerUser?.radiusKm || currentUser?.radiusKm || 5} km • ~${selectedItem.distance || 0.5} km dari zon anda`
+                            }
+                          </Text>
+                        </View>
 
-                  {/* WhatsApp Direct Button (if phone exists) */}
-                  {selectedItem.sellerPhone ? (
-                    <TouchableOpacity
-                      onPress={() => handleOpenWhatsApp(selectedItem.sellerPhone, selectedItem.title)}
-                      className="w-full bg-green-500 py-3 rounded-2xl flex-row items-center justify-center mt-2"
-                    >
-                      <Phone size={16} color="white" />
-                      <Text className="text-white font-bold text-sm ml-2">
-                        WhatsApp ({selectedItem.sellerPhone})
-                      </Text>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
+                        {selectedItem.sellerContactNotes ? (
+                          <Text className="text-xs text-slate-500 italic mt-2 bg-white p-2.5 rounded-xl border border-slate-100">
+                            Nota: "{selectedItem.sellerContactNotes}"
+                          </Text>
+                        ) : null}
+
+                        {selectedItem.sellerPhone ? (
+                          <View className="mt-2.5 pt-2.5 border-t border-slate-200/60 flex-row justify-between items-center">
+                            <View>
+                              <Text className="text-[10px] text-slate-400 uppercase font-semibold">No. WhatsApp / Telefon</Text>
+                              <Text className="text-xs font-bold text-slate-800">{selectedItem.sellerPhone}</Text>
+                            </View>
+                            {isSelectedMyItem ? (
+                              <View className="bg-emerald-100 px-2.5 py-1 rounded-lg">
+                                <Text className="text-[10px] font-bold text-emerald-800">Nombor Anda</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        ) : null}
+                      </View>
+
+                      {/* Action: You posted this vs Chatbox & WhatsApp */}
+                      {isSelectedMyItem ? (
+                        <View className="w-full bg-emerald-50 border border-emerald-200 py-3.5 px-4 rounded-2xl flex-row justify-between items-center mb-6 shadow-xs">
+                          <View className="flex-row items-center flex-1 mr-2">
+                            <View className="w-9 h-9 rounded-full bg-emerald-600 items-center justify-center mr-3 shadow-xs">
+                              <CheckCircle2 size={18} color="white" />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-emerald-950 font-bold text-sm">
+                                Anda Menyiarkan Iklan Ini
+                              </Text>
+                              <Text className="text-emerald-700 text-xs mt-0.5">
+                                You posted this • Iklan aktif di komuniti
+                              </Text>
+                            </View>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => {
+                              Alert.alert(
+                                'Padam Iklan',
+                                'Adakah anda pasti ingin memadamkan iklan barangan ini?',
+                                [
+                                  { text: 'Batal', style: 'cancel' },
+                                  {
+                                    text: 'Padam',
+                                    style: 'destructive',
+                                    onPress: async () => {
+                                      if (selectedItem.isDonation) {
+                                        await deleteDonation(selectedItem.id);
+                                      } else {
+                                        await deleteListing(selectedItem.id);
+                                      }
+                                      setSelectedItem(null);
+                                    }
+                                  }
+                                ]
+                              );
+                            }}
+                            className="bg-red-100/90 px-3 py-2 rounded-xl flex-row items-center active:bg-red-200"
+                          >
+                            <Trash2 size={14} color="#dc2626" />
+                            <Text className="text-xs font-bold text-red-600 ml-1">Padam</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View className="space-y-2.5 mb-6">
+                          {/* Chatbox in App Button */}
+                          <TouchableOpacity
+                            onPress={() => handleOpenChat(selectedItem)}
+                            className="w-full bg-emerald-600 py-3.5 rounded-2xl flex-row items-center justify-center shadow-md shadow-emerald-600/30"
+                          >
+                            <MessageSquare size={18} color="white" />
+                            <Text className="text-white font-bold text-sm ml-2">
+                              Mesej {selectedItem.isDonation ? 'Penyumbang' : 'Penjual'} (Chatbox)
+                            </Text>
+                          </TouchableOpacity>
+
+                          {/* WhatsApp Direct Button (if phone exists) */}
+                          {selectedItem.sellerPhone ? (
+                            <TouchableOpacity
+                              onPress={() => handleOpenWhatsApp(selectedItem.sellerPhone, selectedItem.title)}
+                              className="w-full bg-green-500 py-3 rounded-2xl flex-row items-center justify-center mt-2"
+                            >
+                              <Phone size={16} color="white" />
+                              <Text className="text-white font-bold text-sm ml-2">
+                                WhatsApp ({selectedItem.sellerPhone})
+                              </Text>
+                            </TouchableOpacity>
+                          ) : null}
+                        </View>
+                      )}
+                    </>
+                  );
+                })()}
               </ScrollView>
             </View>
           </View>

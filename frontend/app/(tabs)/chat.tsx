@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MessageCircle, Clock, ChevronRight, Tag } from 'lucide-react-native';
+import { useFocusEffect } from 'expo-router';
 import { useChatStore } from '../../store/useChatStore';
 import ChatModal from '../../components/ChatModal';
 import { ChatConversation } from '../../types';
@@ -9,10 +10,26 @@ import { ChatConversation } from '../../types';
 export default function ChatScreen() {
   const { conversations, fetchConversations, loading } = useChatStore();
   const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchConversations();
-  }, []);
+  // Auto-refresh and poll every 3.5s while the Chat tab is actively focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchConversations(true);
+
+      const interval = setInterval(() => {
+        fetchConversations(true);
+      }, 3500);
+
+      return () => clearInterval(interval);
+    }, [fetchConversations])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchConversations();
+    setRefreshing(false);
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -23,7 +40,18 @@ export default function ChatScreen() {
         </Text>
       </View>
       <View className="flex-1 bg-gray-50 -mt-3 rounded-t-3xl">
-        <ScrollView className="flex-1 px-4 pt-5" showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          className="flex-1 px-4 pt-5" 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#059669']}
+              tintColor="#059669"
+            />
+          }
+        >
           {loading && conversations.length === 0 ? (
             <View className="items-center justify-center py-24">
               <ActivityIndicator size="large" color="#059669" />
@@ -69,9 +97,16 @@ export default function ChatScreen() {
                       </Text>
                     </View>
                   ) : null}
-                  <Text className="text-xs text-gray-500 font-medium" numberOfLines={1}>
-                    {conv.lastMessage}
-                  </Text>
+                  <View className="flex-row justify-between items-center">
+                    <Text className="text-xs text-gray-500 font-medium flex-1 mr-2" numberOfLines={1}>
+                      {conv.lastMessage}
+                    </Text>
+                    {(conv.unreadCount ?? 0) > 0 && (
+                      <View className="bg-emerald-600 rounded-full px-2 py-0.5 min-w-[20px] items-center justify-center">
+                        <Text className="text-[10px] font-bold text-white">{conv.unreadCount}</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
                 <ChevronRight size={18} color="#9ca3af" />
               </TouchableOpacity>
@@ -99,7 +134,7 @@ export default function ChatScreen() {
             selectedConversation.itemContextTitle
               ? {
                   title: selectedConversation.itemContextTitle,
-                  price: selectedConversation.itemContextPrice,
+                  price: selectedConversation.itemContextPrice != null ? Number(selectedConversation.itemContextPrice) : undefined,
                   category: selectedConversation.itemContextCategory,
                 }
               : undefined

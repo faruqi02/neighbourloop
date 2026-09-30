@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Recycle, Mail, Key, LogIn, Activity } from 'lucide-react';
+import { Recycle, Mail, Key, LogIn, Activity, AtSign } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 
 export const LoginPage = () => {
@@ -58,13 +58,13 @@ export const LoginPage = () => {
 
           <div className="mb-4">
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">
-              Emel atau No. Telefon
+              Emel atau Username
             </label>
             <div className="relative">
-              <Mail className="absolute left-4 top-3.5 text-gray-400" size={18} />
+              <AtSign className="absolute left-4 top-3.5 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder="admin@neighbourloop.com"
+                placeholder="admin@neighbourloop.com atau username"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-11 pr-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"

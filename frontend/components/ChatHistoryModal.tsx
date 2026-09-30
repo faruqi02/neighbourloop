@@ -17,7 +17,11 @@ export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalP
 
   useEffect(() => {
     if (visible) {
-      fetchConversations();
+      fetchConversations(true);
+      const interval = setInterval(() => {
+        fetchConversations(true);
+      }, 3500);
+      return () => clearInterval(interval);
     }
   }, [visible]);
 
@@ -88,7 +92,9 @@ export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalP
                       <Tag size={10} color="#16a34a" />
                       <Text className="text-[10px] font-bold text-green-800 ml-1" numberOfLines={1}>
                         {conv.itemContextTitle}
-                        {conv.itemContextPrice !== undefined ? ` • RM ${conv.itemContextPrice}` : ''}
+                        {conv.itemContextPrice != null && !isNaN(Number(conv.itemContextPrice))
+                          ? ` • RM ${Number(conv.itemContextPrice).toFixed(0)}`
+                          : ''}
                       </Text>
                     </View>
                   ) : null}
@@ -120,7 +126,7 @@ export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalP
               selectedConversation.itemContextTitle
                 ? {
                     title: selectedConversation.itemContextTitle,
-                    price: selectedConversation.itemContextPrice,
+                    price: selectedConversation.itemContextPrice != null ? Number(selectedConversation.itemContextPrice) : undefined,
                     category: selectedConversation.itemContextCategory,
                   }
                 : undefined

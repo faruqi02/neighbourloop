@@ -10,7 +10,7 @@ from schemas import (
 
 router = APIRouter(prefix="/recycle", tags=["Smart Recycling & Donation"])
 
-APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwitujRlYaYoxpd7UzD5Ieffo87pOarz_vTXwo9_mSPvf0cjcj9OHHUCIfUEQdjUQDU/exec"
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfZ19MpaNnKrMmgkwDGFhnZQ1Kjuo4n4UDM3rWcdHscIU9WesFKILxEGNlyH_hkJQv/exec"
 
 RECYCLE_CACHE = {
     "centers": [],

@@ -9,13 +9,13 @@ interface ChatState {
   loading: boolean;
   error: string | null;
   setActiveConversationId: (id: string | null) => void;
-  fetchConversations: () => Promise<void>;
+  fetchConversations: (silent?: boolean) => Promise<void>;
   getOrCreateConversation: (
     participant: { id: string; name: string; avatarUrl?: string; phone?: string },
     itemContext?: { title: string; price?: number; category?: string }
   ) => string;
   sendMessage: (conversationId: string, text: string, senderId: string, senderName: string) => Promise<void>;
-  markAsRead: (conversationId: string) => void;
+  markAsRead: (conversationId: string, otherUserId?: string) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -31,20 +31,53 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  fetchConversations: async () => {
+  fetchConversations: async (silent = false) => {
     const currentUser = useUserStore.getState().currentUser;
     if (!currentUser) return;
     
-    set({ loading: true, error: null });
+    if (!silent && get().conversations.length === 0) {
+      set({ loading: true, error: null });
+    }
     try {
       const data = await apiRequest<ChatConversation[]>(`/chat/conversations/${currentUser.id}`);
-      if (data) {
-        set({ conversations: data, loading: false });
+      if (data && Array.isArray(data)) {
+        set((state) => {
+          // Merge incoming data with local optimistic messages
+          const merged = data.map((incomingConv) => {
+            const existingConv = state.conversations.find((c) => c.id === incomingConv.id);
+            if (!existingConv) return incomingConv;
+
+            // Retain any pending temp messages that aren't yet in incomingConv
+            const pendingMessages = existingConv.messages.filter(
+              (m) => m.id.startsWith('msg_temp_') && !incomingConv.messages.some((im) => im.text === m.text && im.isMe)
+            );
+
+            if (pendingMessages.length > 0) {
+              return {
+                ...incomingConv,
+                messages: [...incomingConv.messages, ...pendingMessages],
+                lastMessage: pendingMessages[pendingMessages.length - 1].text,
+                lastMessageTime: 'Baru sahaja',
+              };
+            }
+            return incomingConv;
+          });
+
+          // Also keep any local-only conversations (e.g. started before first message)
+          const incomingIds = new Set(data.map((d) => d.id));
+          const localOnly = state.conversations.filter((c) => !incomingIds.has(c.id));
+
+          return { 
+            conversations: [...merged, ...localOnly], 
+            loading: false 
+          };
+        });
       } else {
         set({ loading: false });
       }
     } catch (e) {
-      set({ error: 'Gagal memuatkan mesej', loading: false });
+      if (!silent) set({ error: 'Gagal memuatkan mesej', loading: false });
+      else set({ loading: false });
     }
   },
 
@@ -127,18 +160,42 @@ export const useChatStore = create<ChatState>((set, get) => ({
           message: text.trim()
         })
       });
-      // Refresh to get real IDs and timestamps
-      await get().fetchConversations();
+      // Refresh silently to get real IDs and timestamps without UI flicker
+      await get().fetchConversations(true);
     } catch(e) {
       console.error('Failed to send message', e);
     }
   },
 
-  markAsRead: (conversationId) => {
+  markAsRead: (conversationId: string, otherUserId?: string) => {
+    const currentUser = useUserStore.getState().currentUser;
+    const conv = get().conversations.find((c) => c.id === conversationId);
+    const targetOtherUserId = otherUserId || conv?.participantId;
+
+    // Immediately mark locally as read
     set((state) => ({
-      conversations: state.conversations.map((conv) =>
-        conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
-      ),
+      conversations: state.conversations.map((c) => {
+        if (c.id === conversationId) {
+          return {
+            ...c,
+            unreadCount: 0,
+            messages: c.messages.map((m) => (!m.isMe ? { ...m, isRead: true } : m)),
+          };
+        }
+        return c;
+      }),
     }));
+
+    // Notify backend to mark read in memory and update Google Sheets
+    if (currentUser && targetOtherUserId) {
+      apiRequest('/chat/read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser.id,
+          other_user_id: targetOtherUserId,
+        }),
+      }).catch((e) => console.log('markAsRead sync error:', e));
+    }
   },
 }));

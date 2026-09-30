@@ -39,12 +39,13 @@ const PRESET_IMAGES = [
 
 export default function HelpScreen() {
   const { requests, addRequest, fulfillRequest, fetchHelpRequests, loading } = useHelpStore();
-  const { currentUser } = useUserStore();
+  const { currentUser, allUsers, fetchUsers } = useUserStore();
   const router = useRouter();
   const navigation = useNavigation();
 
   useEffect(() => {
     fetchHelpRequests();
+    fetchUsers?.();
   }, []);
 
   if (!currentUser) return null;
@@ -61,7 +62,7 @@ export default function HelpScreen() {
   const [category, setCategory] = useState<'Pinjam Barang' | 'Khidmat/Tenaga' | 'Kemahiran' | 'Lain-lain'>('Pinjam Barang');
   const [selectedImage, setSelectedImage] = useState('');
   const [requesterPhone, setRequesterPhone] = useState(currentUser.phone || '');
-  const [requesterNotes, setRequesterNotes] = useState(currentUser.contactNotes || '');
+  const [requesterNotes, setRequesterNotes] = useState('');
 
   // Success Feedback Modal
   const [successVisible, setSuccessVisible] = useState(false);
@@ -70,19 +71,44 @@ export default function HelpScreen() {
 
   // Chat Modal
   const [chatModalVisible, setChatModalVisible] = useState(false);
-  const [activeChatRecipient, setActiveChatRecipient] = useState<{ id: string; name: string; phone?: string } | null>(null);
-  const [activeChatContext, setActiveChatContext] = useState<{ title: string; category?: string } | null>(null);
+  const [activeChatRecipient, setActiveChatRecipient] = useState<{ 
+    id: string; 
+    name: string; 
+    username?: string;
+    phone?: string;
+    distance?: number;
+    radiusKm?: number;
+  } | null>(null);
+  const [activeChatContext, setActiveChatContext] = useState<{ 
+    title: string; 
+    category?: string;
+    distance?: number;
+    radiusKm?: number;
+  } | null>(null);
 
   const handleOpenChat = () => {
     if (!selectedRequest) return;
+    const requester = allUsers.find((u) => u.id === selectedRequest.requesterId);
+    const reqUsername = (
+      requester?.username ||
+      (selectedRequest.requesterName !== 'Jiran' ? selectedRequest.requesterName : '') ||
+      requester?.name ||
+      'pemohon'
+    ).replace(/^@/, '');
+
     const recipient = {
       id: selectedRequest.requesterId,
-      name: selectedRequest.requesterName,
+      name: `@${reqUsername}`,
+      username: reqUsername,
       phone: selectedRequest.requesterPhone,
+      distance: selectedRequest.distance,
+      radiusKm: requester?.radiusKm || currentUser?.radiusKm || 5,
     };
     const context = {
       title: selectedRequest.title,
       category: 'Help Nearby',
+      distance: selectedRequest.distance,
+      radiusKm: requester?.radiusKm || currentUser?.radiusKm || 5,
     };
     setSelectedRequest(null);
     setActiveChatRecipient(recipient);
@@ -275,7 +301,7 @@ export default function HelpScreen() {
         onPress={() => {
           setNewType(activeTab);
           setRequesterPhone(currentUser.phone || '');
-          setRequesterNotes(currentUser.contactNotes || '');
+          setRequesterNotes('');
           setCreateModalVisible(true);
         }}
         className="absolute bottom-6 right-6 bg-purple-700 px-5 py-3.5 rounded-full flex-row items-center shadow-lg shadow-purple-900/40"

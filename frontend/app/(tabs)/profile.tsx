@@ -26,7 +26,8 @@ import {
   Phone, 
   Send, 
   UserCheck,
-  LogOut
+  LogOut,
+  Camera
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import LocationModal from '../../components/LocationModal';
@@ -66,10 +67,20 @@ export default function ProfileScreen() {
       <ScrollView className="flex-1 bg-gray-50" showsVerticalScrollIndicator={false}>
         {/* Profile Info Card */}
         <View className="bg-white p-6 items-center border-b border-gray-100 mb-3">
-          <Image
-            source={{ uri: currentUser.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' }}
-            className="w-24 h-24 rounded-full bg-gray-200 mb-3 border-4 border-green-600"
-          />
+          <TouchableOpacity 
+            onPress={() => setEditContactVisible(true)}
+            activeOpacity={0.8}
+            className="relative mb-3"
+          >
+            <Image
+              source={{ uri: currentUser.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' }}
+              className="w-24 h-24 rounded-full bg-gray-200 border-4 border-emerald-600"
+            />
+            <View className="absolute bottom-0 right-0 bg-emerald-600 p-2 rounded-full border-2 border-white shadow-sm">
+              <Camera size={14} color="white" />
+            </View>
+          </TouchableOpacity>
+
           <View className="flex-row items-center">
             <Text className="text-2xl font-black text-gray-900">{currentUser.name}</Text>
             {currentUser.role === 'Admin' ? (
@@ -93,13 +104,13 @@ export default function ProfileScreen() {
           {/* Contact Details Quick Preview Card */}
           <TouchableOpacity
             onPress={() => setEditContactVisible(true)}
-            className="mt-3 bg-green-50/80 px-4 py-2 rounded-2xl border border-green-200 flex-row items-center"
+            className="mt-3 bg-emerald-50/80 px-4 py-2 rounded-2xl border border-emerald-200 flex-row items-center"
           >
-            <Phone size={14} color="#16a34a" />
-            <Text className="text-xs font-bold text-green-800 ml-1.5">
+            <Phone size={14} color="#059669" />
+            <Text className="text-xs font-bold text-emerald-800 ml-1.5">
               {currentUser.phone ? `WhatsApp: ${currentUser.phone}` : 'Tetapkan No. WhatsApp / Telefon'}
             </Text>
-            <ChevronRight size={12} color="#16a34a" className="ml-1" />
+            <ChevronRight size={12} color="#059669" className="ml-1" />
           </TouchableOpacity>
         </View>
 
@@ -143,17 +154,17 @@ export default function ProfileScreen() {
             <ChevronRight size={18} color="#9ca3af" />
           </TouchableOpacity>
 
-          {/* Maklumat Perhubungan / Contact Details (Requirement 5) */}
+          {/* Kemaskini Profil */}
           <TouchableOpacity 
             onPress={() => setEditContactVisible(true)}
             className="flex-row items-center p-4 border-b border-gray-100"
           >
-            <View className="w-10 h-10 bg-blue-50 rounded-xl items-center justify-center border border-blue-100">
-              <Phone size={20} color="#2563eb" />
+            <View className="w-10 h-10 bg-emerald-50 rounded-xl items-center justify-center border border-emerald-100">
+              <UserCheck size={20} color="#059669" />
             </View>
             <View className="flex-1 ml-3.5">
-              <Text className="text-gray-900 text-sm font-bold">Maklumat Perhubungan Pengguna</Text>
-              <Text className="text-gray-400 text-xs mt-0.5">Ubah Nama Pengguna (Username) & No. Telefon</Text>
+              <Text className="text-gray-900 text-sm font-bold">Kemaskini Profil</Text>
+              <Text className="text-gray-400 text-xs mt-0.5">Nama, Emel, Lokasi GPS, Foto & Kata Laluan</Text>
             </View>
             <ChevronRight size={18} color="#9ca3af" />
           </TouchableOpacity>

@@ -7,7 +7,7 @@ interface MarketState {
   listings: Listing[];
   loading: boolean;
   fetchListings: () => Promise<void>;
-  addListing: (listing: Omit<Listing, 'id' | 'createdAt'>) => Promise<boolean>;
+  addListing: (listing: Omit<Listing, 'id' | 'createdAt'> & { imageBase64?: string }) => Promise<boolean>;
   deleteListing: (id: string) => Promise<boolean>;
   filterListings: (category: string, search: string, maxDistance?: number) => Listing[];
 }
@@ -33,10 +33,13 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   addListing: async (listingData) => {
     const currentUser = useUserStore.getState().currentUser;
     const userId = currentUser ? currentUser.id : 'u1';
+    const sellerUsername = (listingData.sellerName || currentUser?.username || currentUser?.name || 'Jiran').replace(/^@/, '');
 
     // Optimistic UI update
     const tempListing: Listing = {
       ...listingData,
+      sellerName: sellerUsername,
+      sellerId: userId,
       id: `l_${Date.now()}`,
       createdAt: 'Baru sahaja',
     };
@@ -52,8 +55,12 @@ export const useMarketStore = create<MarketState>((set, get) => ({
           category: listingData.category,
           condition: listingData.condition,
           imageUrl: listingData.imageUrl,
+          imageBase64: listingData.imageBase64,
+          sellerId: userId,
+          sellerName: sellerUsername,
           sellerPhone: listingData.sellerPhone,
           sellerContactNotes: listingData.sellerContactNotes,
+          distance: listingData.distance,
         }),
       });
 

@@ -86,6 +86,7 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   isMe?: boolean;
+  isRead?: boolean;
 }
 
 export interface ChatConversation {

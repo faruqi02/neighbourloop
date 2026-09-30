@@ -44,19 +44,21 @@ def get_help_items(
                     except Exception:
                         dist = 0.5
 
-                    t = d.get("type") or "request"
-                    if t.lower() not in ["request", "offer"]:
-                        t = "request"
+                    raw_type = str(d.get("type") or "").strip().lower()
+                    if raw_type in ["tawaran", "offer"]:
+                        t = "Tawaran"
                     else:
-                        t = t.lower()
+                        t = "Permintaan"
 
-                    st = d.get("status") or "Open"
+                    st = str(d.get("status") or "Open").strip()
                     if st not in ["Open", "In Progress", "Completed"]:
                         st = "Open"
 
-                    cat = d.get("category") or "Lain-lain"
-                    if cat not in ['Semua', 'Pinjam Barang', 'Khidmat/Tenaga', 'Kecemasan', 'Lain-lain']:
-                        cat = "Lain-lain"
+                    cat = str(d.get("category") or "Lain-lain").strip()
+
+                    req_name = str(d.get("requesterName") or "Jiran").strip().lstrip('@')
+                    if not req_name:
+                        req_name = "Jiran"
 
                     parsed.append(HelpRequest(
                         id=str(d.get("id") or f"h_{uuid.uuid4().hex[:6]}"),
@@ -66,7 +68,7 @@ def get_help_items(
                         distance=dist,
                         type=t,
                         requesterId=str(d.get("requesterId") or "u1"),
-                        requesterName=str(d.get("requesterName") or "Jiran"),
+                        requesterName=req_name,
                         requesterPhone=str(d.get("requesterPhone") or ""),
                         requesterContactNotes=str(d.get("requesterContactNotes") or ""),
                         imageUrl=d.get("imageUrl") or None,
@@ -81,7 +83,14 @@ def get_help_items(
 
     results = list(HELP_CACHE["data"])
     if type_filter and type_filter != "Semua":
-        results = [h for h in results if h.type == type_filter.lower()]
+        tf = type_filter.strip().lower()
+        if tf in ["tawaran", "offer"]:
+            results = [h for h in results if h.type.lower() in ["tawaran", "offer"]]
+        elif tf in ["permintaan", "request"]:
+            results = [h for h in results if h.type.lower() in ["permintaan", "request"]]
+        else:
+            results = [h for h in results if h.type.lower() == tf]
+
     if category and category != "Semua":
         results = [h for h in results if h.category.lower() == category.lower()]
     if max_distance:
@@ -93,22 +102,72 @@ def create_help_item(data: HelpCreate, background_tasks: BackgroundTasks, user_i
     new_id = f"h_{uuid.uuid4().hex[:8]}"
     created_at = time.strftime("%Y-%m-%d %H:%M")
 
+    req_id = data.requesterId or user_id or "u1"
+
+    # 1. Resolve requester username / name
+    req_name = data.requesterName
+    if not req_name or req_name == "Jiran":
+        try:
+            user_resp = requests.get(APPS_SCRIPT_URL, params={"sheet": "Users", "id": req_id}, timeout=10.0)
+            u = user_resp.json()
+            if isinstance(u, dict) and u.get("id"):
+                req_name = u.get("username") or u.get("name") or "Jiran"
+        except Exception:
+            req_name = "Jiran"
+
+    if req_name:
+        req_name = str(req_name).strip().lstrip('@')
+    else:
+        req_name = "Jiran"
+
+    # 2. Normalize type
+    raw_type = str(data.type or "").strip().lower()
+    t = "Tawaran" if raw_type in ["tawaran", "offer"] else "Permintaan"
+
+    # 3. Upload image to Google Drive if base64 data is provided
+    img_url = data.imageUrl or ""
+    base64_data = data.imageBase64
+    if not base64_data and img_url and img_url.startswith("data:image"):
+        base64_data = img_url
+
+    if base64_data:
+        try:
+            upload_payload = {
+                "action": "upload_file",
+                "base64": base64_data,
+                "filename": f"help_{new_id}_{int(time.time())}.jpg",
+                "mimeType": "image/jpeg"
+            }
+            up_res = requests.post(APPS_SCRIPT_URL, json=upload_payload, timeout=60.0)
+            up_json = up_res.json()
+            if isinstance(up_json, dict):
+                if up_json.get("url"):
+                    img_url = up_json["url"]
+                elif up_json.get("fileId"):
+                    img_url = f"https://lh3.googleusercontent.com/d/{up_json['fileId']}"
+        except Exception as e:
+            print("Error uploading help image to Google Drive:", e)
+
+    dist = data.distance if data.distance is not None else 0.5
+
     row_data = {
         "id": new_id,
         "title": data.title,
         "description": data.description,
         "category": data.category,
-        "type": data.type.lower(),
-        "distance": 0.5,
-        "requesterId": user_id,
-        "requesterName": "Jiran",
+        "type": t,
+        "distance": dist,
+        "requesterId": req_id,
+        "requesterName": req_name,
         "requesterPhone": data.requesterPhone or "",
         "requesterContactNotes": data.requesterContactNotes or "",
-        "imageUrl": data.imageUrl or "",
-        "status": "Open"
+        "imageUrl": img_url,
+        "status": "Open",
+        "fulfilledBy": "",
+        "createdAt": created_at
     }
 
-    new_item = HelpRequest(**row_data, createdAt=created_at)
+    new_item = HelpRequest(**row_data)
 
     HELP_CACHE["data"].insert(0, new_item)
     background_tasks.add_task(sync_save_to_gas, {"action": "create", "sheet": "HelpRequests", "data": row_data})
@@ -131,7 +190,7 @@ def fulfill_help(help_id: str, background_tasks: BackgroundTasks, helper_id: str
             description="",
             category="Pinjam Barang",
             distance=0.5,
-            type="request",
+            type="Permintaan",
             requesterId="u1",
             requesterName="Jiran",
             status="Completed",

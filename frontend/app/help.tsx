@@ -7,7 +7,9 @@ import {
   TextInput, 
   Modal, 
   Image, 
-  Linking 
+  Linking,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useNavigation } from 'expo-router';
@@ -21,7 +23,8 @@ import {
   Phone, 
   MessageSquare, 
   CheckCircle2,
-  ChevronLeft
+  ChevronLeft,
+  Trash2
 } from 'lucide-react-native';
 import { useHelpStore } from '../store/useHelpStore';
 import { useUserStore } from '../store/useUserStore';
@@ -38,7 +41,7 @@ const PRESET_IMAGES = [
 ];
 
 export default function HelpScreen() {
-  const { requests, addRequest, fulfillRequest, fetchHelpRequests, loading } = useHelpStore();
+  const { requests, addRequest, fulfillRequest, deleteRequest, fetchHelpRequests, loading } = useHelpStore();
   const { currentUser, allUsers, fetchUsers } = useUserStore();
   const router = useRouter();
   const navigation = useNavigation();
@@ -61,8 +64,30 @@ export default function HelpScreen() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<'Pinjam Barang' | 'Khidmat/Tenaga' | 'Kemahiran' | 'Lain-lain'>('Pinjam Barang');
   const [selectedImage, setSelectedImage] = useState('');
+  const [selectedImageBase64, setSelectedImageBase64] = useState<string | undefined>(undefined);
+  const [isUploading, setIsUploading] = useState(false);
   const [requesterPhone, setRequesterPhone] = useState(currentUser.phone || '');
   const [requesterNotes, setRequesterNotes] = useState('');
+
+  // Helper to ensure URI is converted to Base64 data URL
+  const ensureBase64 = async (uri: string): Promise<string | undefined> => {
+    if (!uri) return undefined;
+    if (uri.startsWith('data:image')) return uri;
+    try {
+      const res = await fetch(uri);
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = () => resolve(undefined);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return undefined;
+    }
+  };
 
   // Success Feedback Modal
   const [successVisible, setSuccessVisible] = useState(false);
@@ -124,32 +149,49 @@ export default function HelpScreen() {
     return matchType && matchCat;
   });
 
-  const handleCreateRequest = () => {
+  const handleCreateRequest = async () => {
     if (!title.trim()) {
       alert('Sila masukkan tajuk bantuan.');
       return;
     }
 
-    addRequest({
-      title,
-      description: description || 'Bantuan komuniti kejiranan.',
-      category,
-      type: newType,
-      distance: 0.4,
-      requesterId: currentUser.id,
-      requesterName: currentUser.name,
-      requesterPhone: requesterPhone.trim() || undefined,
-      requesterContactNotes: requesterNotes.trim() || undefined,
-      imageUrl: selectedImage || undefined,
-    });
+    setIsUploading(true);
 
-    setCreateModalVisible(false);
-    setTitle('');
-    setDescription('');
-    setSelectedImage('');
-    setSuccessTitle('Bantuan Berjaya Disiarkan!');
-    setSuccessMsg(`Posting "${title}" anda kini dapat dilihat oleh jiran sekitar ${currentUser.location}.`);
-    setSuccessVisible(true);
+    try {
+      let base64 = selectedImageBase64;
+      if (!base64 && selectedImage && (selectedImage.startsWith('blob:') || selectedImage.startsWith('file:') || selectedImage.startsWith('data:image'))) {
+        base64 = await ensureBase64(selectedImage);
+      }
+
+      const cleanUsername = (currentUser.username || currentUser.name || 'Jiran').replace(/^@/, '');
+
+      await addRequest({
+        title,
+        description: description || 'Bantuan komuniti kejiranan.',
+        category,
+        type: newType,
+        distance: 0.4,
+        requesterId: currentUser.id,
+        requesterName: cleanUsername,
+        requesterPhone: requesterPhone.trim() || undefined,
+        requesterContactNotes: requesterNotes.trim() || undefined,
+        imageUrl: selectedImage || undefined,
+        imageBase64: base64,
+      });
+
+      setCreateModalVisible(false);
+      setTitle('');
+      setDescription('');
+      setSelectedImage('');
+      setSelectedImageBase64(undefined);
+      setSuccessTitle('Bantuan Berjaya Disiarkan!');
+      setSuccessMsg(`Posting "${title}" anda kini dapat dilihat oleh jiran sekitar ${currentUser.location}.`);
+      setSuccessVisible(true);
+    } catch (err) {
+      alert('Ralat semasa menyiarkan bantuan.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleFulfillHelp = (req: HelpRequest) => {
@@ -276,19 +318,43 @@ export default function HelpScreen() {
                   {req.description}
                 </Text>
 
-                <View className="flex-row justify-between items-center pt-2 border-t border-gray-50">
-                  <View className="flex-row items-center">
-                    <View className="w-6 h-6 rounded-full bg-purple-100 items-center justify-center mr-1.5">
-                      <User size={12} color="#7e22ce" />
-                    </View>
-                    <Text className="text-xs text-gray-700 font-semibold">{req.requesterName}</Text>
-                  </View>
+                {(() => {
+                  const isMyItem = req.requesterId === currentUser.id ||
+                    (currentUser.username && req.requesterName.replace(/^@/, '').toLowerCase() === currentUser.username.toLowerCase()) ||
+                    (currentUser.name && req.requesterName.toLowerCase() === currentUser.name.toLowerCase());
 
-                  <View className="flex-row items-center">
-                    <MapPin size={12} color="#9ca3af" />
-                    <Text className="text-gray-400 text-xs ml-0.5">{req.distance} km</Text>
-                  </View>
-                </View>
+                  const displayReqName = isMyItem 
+                    ? `${req.requesterName} (Anda)` 
+                    : req.requesterName;
+
+                  return (
+                    <View className="flex-row justify-between items-center pt-2 border-t border-gray-50">
+                      <View className="flex-row items-center flex-1 mr-2">
+                        <View className="w-6 h-6 rounded-full bg-purple-100 items-center justify-center mr-1.5">
+                          <User size={12} color="#7e22ce" />
+                        </View>
+                        <Text className="text-xs text-gray-700 font-semibold" numberOfLines={1}>
+                          {displayReqName}
+                        </Text>
+                      </View>
+
+                      <View className="flex-row items-center">
+                        {isMyItem ? (
+                          <View className="bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                            <Text className="text-[10px] text-purple-700 font-bold">
+                              {req.type === 'Permintaan' ? 'Permintaan Anda' : 'Tawaran Anda'}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View className="flex-row items-center">
+                            <MapPin size={12} color="#9ca3af" />
+                            <Text className="text-gray-400 text-xs ml-0.5">{req.distance} km</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })()}
               </TouchableOpacity>
             ))
           )}
@@ -332,64 +398,159 @@ export default function HelpScreen() {
                 <Text className="text-xl font-bold text-gray-900 mb-2">{selectedRequest.title}</Text>
                 <Text className="text-gray-600 text-sm mb-4 leading-5">{selectedRequest.description}</Text>
 
-                <View className="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-200">
-                  <Text className="text-xs text-gray-400 font-semibold uppercase mb-1">
-                    {selectedRequest.type === 'Permintaan' ? 'Pemohon Bantuan' : 'Pemberi Bantuan'}
-                  </Text>
-                  <Text className="text-sm font-bold text-gray-800">{selectedRequest.requesterName}</Text>
-                  <View className="flex-row items-center mt-1">
-                    <MapPin size={14} color="#16a34a" />
-                    <Text className="text-xs text-gray-600 ml-1">
-                      {selectedRequest.distance} km dari lokasi anda
-                    </Text>
-                  </View>
+                {(() => {
+                  const isSelectedMyItem = selectedRequest.requesterId === currentUser.id ||
+                    (currentUser.username && selectedRequest.requesterName.replace(/^@/, '').toLowerCase() === currentUser.username.toLowerCase()) ||
+                    (currentUser.name && selectedRequest.requesterName.toLowerCase() === currentUser.name.toLowerCase());
 
-                  {/* Contact details */}
-                  {selectedRequest.requesterPhone ? (
-                    <View className="mt-2 pt-2 border-t border-gray-200 flex-row justify-between items-center">
-                      <View>
-                        <Text className="text-[10px] text-gray-400 uppercase font-semibold">No. WhatsApp</Text>
-                        <Text className="text-xs font-bold text-gray-800">{selectedRequest.requesterPhone}</Text>
+                  const requesterUser = allUsers.find((u) => u.id === selectedRequest.requesterId);
+                  const displayUsername = requesterUser?.username || (selectedRequest.requesterName !== 'Jiran' ? selectedRequest.requesterName.replace(/^@/, '') : 'jiran');
+
+                  return (
+                    <>
+                      <View className="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-200">
+                        <View className="flex-row justify-between items-center mb-1">
+                          <Text className="text-xs text-gray-400 font-semibold uppercase">
+                            {selectedRequest.type === 'Permintaan' ? 'Pemohon Bantuan' : 'Pemberi Bantuan'}
+                          </Text>
+                          {isSelectedMyItem && (
+                            <View className="bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200">
+                              <Text className="text-[10px] font-bold text-purple-800">Iklan Anda</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text className="text-sm font-bold text-gray-800">
+                          @{displayUsername} {isSelectedMyItem ? '(Anda)' : ''}
+                        </Text>
+                        <View className="flex-row items-center mt-1">
+                          <MapPin size={14} color="#16a34a" />
+                          <Text className="text-xs text-gray-600 ml-1">
+                            {isSelectedMyItem
+                              ? `Lokasi anda • Radius ${requesterUser?.radiusKm || currentUser?.radiusKm || 5} km`
+                              : `${selectedRequest.distance} km dari lokasi anda • Radius ${requesterUser?.radiusKm || currentUser?.radiusKm || 5} km`
+                            }
+                          </Text>
+                        </View>
+
+                        {/* Contact details */}
+                        {selectedRequest.requesterPhone ? (
+                          <View className="mt-2 pt-2 border-t border-gray-200 flex-row justify-between items-center">
+                            <View>
+                              <Text className="text-[10px] text-gray-400 uppercase font-semibold">No. WhatsApp</Text>
+                              <Text className="text-xs font-bold text-gray-800">{selectedRequest.requesterPhone}</Text>
+                            </View>
+                            {isSelectedMyItem ? (
+                              <View className="bg-purple-100 px-2.5 py-1 rounded-lg">
+                                <Text className="text-[10px] font-bold text-purple-800">Nombor Anda</Text>
+                              </View>
+                            ) : (
+                              <TouchableOpacity
+                                onPress={() => handleOpenWhatsApp(selectedRequest.requesterPhone)}
+                                className="bg-green-600 px-3 py-1.5 rounded-xl flex-row items-center"
+                              >
+                                <Phone size={12} color="white" />
+                                <Text className="text-white text-xs font-bold ml-1">WhatsApp</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        ) : null}
                       </View>
-                      <TouchableOpacity
-                        onPress={() => handleOpenWhatsApp(selectedRequest.requesterPhone)}
-                        className="bg-green-600 px-3 py-1.5 rounded-xl flex-row items-center"
-                      >
-                        <Phone size={12} color="white" />
-                        <Text className="text-white text-xs font-bold ml-1">WhatsApp</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
-                </View>
 
-                {/* Direct In-App Chat Button */}
-                <TouchableOpacity
-                  onPress={handleOpenChat}
-                  className="w-full bg-purple-700 py-3.5 rounded-2xl flex-row justify-center items-center shadow-md shadow-purple-900/30 mb-2.5"
-                >
-                  <MessageSquare size={18} color="white" />
-                  <Text className="text-white font-bold text-base ml-2">
-                    Mesej Jiran (Chatbox)
-                  </Text>
-                </TouchableOpacity>
+                      {/* Action: You posted this vs Chatbox & Fulfill */}
+                      {isSelectedMyItem ? (
+                        <>
+                          <View className="w-full bg-purple-50 border border-purple-200 py-3.5 px-4 rounded-2xl flex-row justify-between items-center mb-3 shadow-xs">
+                            <View className="flex-row items-center flex-1 mr-2">
+                              <View className="w-9 h-9 rounded-full bg-purple-700 items-center justify-center mr-3 shadow-xs">
+                                <CheckCircle2 size={18} color="white" />
+                              </View>
+                              <View className="flex-1">
+                                <Text className="text-purple-950 font-bold text-sm">
+                                  Anda Menyiarkan {selectedRequest.type === 'Permintaan' ? 'Permintaan' : 'Tawaran'} Ini
+                                </Text>
+                                <Text className="text-purple-700 text-xs mt-0.5">
+                                  You posted this • Aktif di komuniti
+                                </Text>
+                              </View>
+                            </View>
+                            <TouchableOpacity
+                              onPress={() => {
+                                Alert.alert(
+                                  'Padam Bantuan',
+                                  'Adakah anda pasti ingin memadamkan siaran bantuan ini?',
+                                  [
+                                    { text: 'Batal', style: 'cancel' },
+                                    {
+                                      text: 'Padam',
+                                      style: 'destructive',
+                                      onPress: async () => {
+                                        await deleteRequest(selectedRequest.id);
+                                        setSelectedRequest(null);
+                                      }
+                                    }
+                                  ]
+                                );
+                              }}
+                              className="bg-red-100/90 px-3 py-2 rounded-xl flex-row items-center active:bg-red-200"
+                            >
+                              <Trash2 size={14} color="#dc2626" />
+                              <Text className="text-xs font-bold text-red-600 ml-1">Padam</Text>
+                            </TouchableOpacity>
+                          </View>
 
-                {selectedRequest.status === 'Completed' ? (
-                  <View className="py-3 rounded-2xl bg-gray-100 items-center">
-                    <Text className="text-gray-500 font-bold text-xs">
-                      Bantuan ini telah diselesaikan oleh {selectedRequest.fulfilledBy}
-                    </Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => handleFulfillHelp(selectedRequest)}
-                    className="w-full bg-emerald-600 py-3 rounded-2xl flex-row justify-center items-center mb-4"
-                  >
-                    <CheckCircle2 size={16} color="white" />
-                    <Text className="text-white font-bold text-sm ml-1.5">
-                      Tandakan Bantuan Selesai
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                          {selectedRequest.status === 'Completed' ? (
+                            <View className="py-3 rounded-2xl bg-gray-100 items-center mb-4">
+                              <Text className="text-gray-500 font-bold text-xs">
+                                Bantuan ini telah diselesaikan oleh {selectedRequest.fulfilledBy || 'anda'}
+                              </Text>
+                            </View>
+                          ) : (
+                            <TouchableOpacity
+                              onPress={() => handleFulfillHelp(selectedRequest)}
+                              className="w-full bg-emerald-600 py-3 rounded-2xl flex-row justify-center items-center mb-4"
+                            >
+                              <CheckCircle2 size={16} color="white" />
+                              <Text className="text-white font-bold text-sm ml-1.5">
+                                Tandakan Bantuan Selesai
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {/* Direct In-App Chat Button */}
+                          <TouchableOpacity
+                            onPress={handleOpenChat}
+                            className="w-full bg-purple-700 py-3.5 rounded-2xl flex-row justify-center items-center shadow-md shadow-purple-900/30 mb-2.5"
+                          >
+                            <MessageSquare size={18} color="white" />
+                            <Text className="text-white font-bold text-base ml-2">
+                              Mesej Jiran (Chatbox)
+                            </Text>
+                          </TouchableOpacity>
+
+                          {selectedRequest.status === 'Completed' ? (
+                            <View className="py-3 rounded-2xl bg-gray-100 items-center mb-4">
+                              <Text className="text-gray-500 font-bold text-xs">
+                                Bantuan ini telah diselesaikan oleh {selectedRequest.fulfilledBy}
+                              </Text>
+                            </View>
+                          ) : (
+                            <TouchableOpacity
+                              onPress={() => handleFulfillHelp(selectedRequest)}
+                              className="w-full bg-emerald-600 py-3 rounded-2xl flex-row justify-center items-center mb-4"
+                            >
+                              <CheckCircle2 size={16} color="white" />
+                              <Text className="text-white font-bold text-sm ml-1.5">
+                                Tandakan Bantuan Selesai
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
               </ScrollView>
             </View>
           </View>
@@ -436,7 +597,10 @@ export default function HelpScreen() {
               <ImagePickerButton
                 title="Gambar Barang / Lokasi (Pilihan)"
                 selectedImageUri={selectedImage}
-                onImageSelected={setSelectedImage}
+                onImageSelected={(uri, base64) => {
+                  setSelectedImage(uri);
+                  setSelectedImageBase64(base64);
+                }}
                 presetImages={PRESET_IMAGES}
               />
 
@@ -498,9 +662,17 @@ export default function HelpScreen() {
 
               <TouchableOpacity
                 onPress={handleCreateRequest}
-                className="w-full bg-purple-700 py-4 rounded-2xl items-center shadow-md shadow-purple-900/30 mb-6"
+                disabled={isUploading}
+                className={`w-full ${isUploading ? 'bg-purple-400' : 'bg-purple-700'} py-4 rounded-2xl items-center shadow-md shadow-purple-900/30 mb-6 flex-row justify-center`}
               >
-                <Text className="text-white font-bold text-base">Siarkan Kepada Jiran</Text>
+                {isUploading ? (
+                  <>
+                    <ActivityIndicator color="white" size="small" />
+                    <Text className="text-white font-bold text-base ml-2">Menyiarkan Bantuan...</Text>
+                  </>
+                ) : (
+                  <Text className="text-white font-bold text-base">Siarkan Kepada Jiran</Text>
+                )}
               </TouchableOpacity>
             </ScrollView>
           </View>

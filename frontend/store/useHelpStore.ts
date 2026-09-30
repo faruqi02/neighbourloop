@@ -3,11 +3,15 @@ import { HelpRequest } from '../types';
 import { apiRequest } from '../services/api';
 import { useUserStore } from './useUserStore';
 
+export interface AddHelpPayload extends Omit<HelpRequest, 'id' | 'status' | 'createdAt'> {
+  imageBase64?: string;
+}
+
 interface HelpState {
   requests: HelpRequest[];
   loading: boolean;
   fetchHelpRequests: () => Promise<void>;
-  addRequest: (reqData: Omit<HelpRequest, 'id' | 'status' | 'createdAt'>) => Promise<boolean>;
+  addRequest: (reqData: AddHelpPayload) => Promise<boolean>;
   deleteRequest: (id: string) => Promise<boolean>;
   fulfillRequest: (requestId: string, helperName: string) => Promise<boolean>;
 }
@@ -32,7 +36,8 @@ export const useHelpStore = create<HelpState>((set) => ({
 
   addRequest: async (reqData) => {
     const currentUser = useUserStore.getState().currentUser;
-    const userId = currentUser ? currentUser.id : 'u1';
+    const userId = reqData.requesterId || (currentUser ? currentUser.id : 'u1');
+    const reqName = reqData.requesterName || (currentUser ? (currentUser.username || currentUser.name || 'Jiran') : 'Jiran');
 
     const tempItem: HelpRequest = {
       ...reqData,
@@ -50,9 +55,13 @@ export const useHelpStore = create<HelpState>((set) => ({
           description: reqData.description,
           category: reqData.category,
           type: reqData.type,
+          distance: reqData.distance || 0.5,
+          requesterId: userId,
+          requesterName: reqName,
           requesterPhone: reqData.requesterPhone,
           requesterContactNotes: reqData.requesterContactNotes,
           imageUrl: reqData.imageUrl,
+          imageBase64: reqData.imageBase64,
         }),
       });
 

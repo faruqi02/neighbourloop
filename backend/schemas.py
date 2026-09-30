@@ -124,24 +124,28 @@ class HelpRequest(BaseModel):
     id: str
     title: str
     description: str
-    category: Literal['Pinjam Barang', 'Khidmat/Tenaga', 'Kemahiran', 'Lain-lain']
+    category: str
     distance: float
-    type: Literal['Permintaan', 'Tawaran']
+    type: str
     requesterId: str
     requesterName: str
     requesterPhone: Optional[str] = None
     requesterContactNotes: Optional[str] = None
     imageUrl: Optional[str] = None
-    status: Literal['Open', 'Completed'] = 'Open'
+    status: str = 'Open'
     fulfilledBy: Optional[str] = None
     createdAt: str
 
 class HelpCreate(BaseModel):
     title: str
     description: str
-    category: Literal['Pinjam Barang', 'Khidmat/Tenaga', 'Kemahiran', 'Lain-lain']
-    type: Literal['Permintaan', 'Tawaran']
+    category: str
+    type: str
+    distance: Optional[float] = 0.5
     imageUrl: Optional[str] = None
+    imageBase64: Optional[str] = None
+    requesterId: Optional[str] = None
+    requesterName: Optional[str] = None
     requesterPhone: Optional[str] = None
     requesterContactNotes: Optional[str] = None
 

@@ -8,7 +8,8 @@ import {
   TouchableOpacity, 
   Modal,
   Linking,
-  ActivityIndicator
+  ActivityIndicator,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useNavigation } from 'expo-router';
@@ -44,6 +45,9 @@ export default function MarketplaceScreen() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+
+  const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  const CARD_WIDTH = Math.floor((SCREEN_WIDTH - 40 - 12) / 2);
 
   // Form State
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -190,47 +194,89 @@ export default function MarketplaceScreen() {
             <Text className="text-gray-400 mt-3 font-semibold">Memuatkan barangan jiran...</Text>
           </View>
         ) : filteredListings.length === 0 ? (
-          <View className="items-center justify-center py-16">
+          <View className="items-center justify-center py-16 bg-white rounded-3xl p-6 border border-slate-100">
             <Tag size={40} color="#9ca3af" />
             <Text className="text-gray-400 mt-2 font-semibold">Tiada barang dijumpai.</Text>
             <Text className="text-gray-400 text-xs mt-1 text-center">Jadilah yang pertama menyiarkan barangan jualan di kawasan anda!</Text>
           </View>
         ) : (
-          filteredListings.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              onPress={() => setSelectedListing(item)}
-              className="flex-row bg-white rounded-2xl p-3 mb-3 border border-gray-100 shadow-sm shadow-gray-200"
-            >
-              <Image
-                source={{ uri: item.imageUrl }}
-                className="w-24 h-24 rounded-xl bg-gray-100"
-              />
-              <View className="flex-1 ml-3.5 justify-between py-0.5">
-                <View>
-                  <View className="flex-row justify-between items-start">
-                    <Text className="text-base font-bold text-gray-900 flex-1 mr-1" numberOfLines={1}>
-                      {item.title}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+            {filteredListings.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                onPress={() => setSelectedListing(item)}
+                style={{ width: '48.5%' }}
+                activeOpacity={0.88}
+                className="bg-white rounded-2xl mb-3.5 border border-slate-200/80 shadow-sm shadow-slate-100 overflow-hidden"
+              >
+                {/* Image Box */}
+                <View style={{ width: '100%', aspectRatio: 1 }} className="relative bg-slate-100">
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+
+                  {/* Top-Right Condition Badge */}
+                  <View 
+                    className={`absolute top-2 right-2 px-2 py-0.5 rounded-md shadow-sm ${
+                      item.condition === 'Baru' 
+                        ? 'bg-rose-500' 
+                        : item.condition === 'Seperti Baru' 
+                          ? 'bg-blue-600' 
+                          : 'bg-emerald-600'
+                    }`}
+                  >
+                    <Text className="text-[10px] font-black text-white uppercase tracking-tight">
+                      {item.condition || 'Terpakai'}
                     </Text>
-                    <View className="bg-blue-50 px-2 py-0.5 rounded-md">
-                      <Text className="text-[10px] font-bold text-blue-700">{item.condition}</Text>
-                    </View>
                   </View>
-                  <Text className="text-gray-500 text-xs mt-0.5" numberOfLines={2}>
-                    {item.description}
-                  </Text>
+
+                  {/* Bottom-Left Distance Badge */}
+                  <View className="absolute bottom-2 left-2 bg-black/60 px-2 py-0.5 rounded-full flex-row items-center">
+                    <MapPin size={9} color="#cbd5e1" />
+                    <Text className="text-[10px] text-white font-bold ml-0.5">
+                      {item.distance || 1.2} km
+                    </Text>
+                  </View>
                 </View>
 
-                <View className="flex-row justify-between items-end">
-                  <Text className="text-green-700 font-black text-lg">RM {item.price.toFixed(0)}</Text>
-                  <View className="flex-row items-center">
-                    <MapPin size={12} color="#9ca3af" />
-                    <Text className="text-gray-400 text-xs ml-0.5">{item.distance} km</Text>
+                {/* Details Box */}
+                <View className="p-2.5 flex-1 justify-between">
+                  <View className="self-start mb-1">
+                    <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                      {item.category || 'Barangan'}
+                    </Text>
+                  </View>
+
+                  {/* Title (2 lines max clamp) */}
+                  <Text 
+                    className="text-xs font-bold text-slate-800 leading-snug mb-1.5 h-8" 
+                    numberOfLines={2}
+                  >
+                    {item.title}
+                  </Text>
+
+                  {/* Price Tag (Big, bold) */}
+                  <View className="flex-row items-baseline mb-1">
+                    <Text className="text-base font-black text-emerald-600">
+                      RM {item.price.toFixed(0)}
+                    </Text>
+                  </View>
+
+                  {/* Seller footer */}
+                  <View className="flex-row items-center justify-between pt-1 border-t border-slate-100">
+                    <Text className="text-[11px] text-slate-500 font-medium flex-1 mr-1" numberOfLines={1}>
+                      {item.sellerName}
+                    </Text>
+                    <View className="bg-blue-50 px-1.5 py-0.5 rounded">
+                      <Text className="text-[9px] text-blue-700 font-bold">Jual</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
         <View className="h-24" />
       </ScrollView>

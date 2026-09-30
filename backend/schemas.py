@@ -5,11 +5,11 @@ class User(BaseModel):
     id: str
     name: str
     email: str
+    username: Optional[str] = ""
     phone: Optional[str] = ""
-    telegram: Optional[str] = ""
-    contactNotes: Optional[str] = ""
-    preferredContactMethod: Optional[str] = "Semua"
     location: str
+    lat: Optional[float] = None
+    lng: Optional[float] = None
     radiusKm: int = 5
     avatarUrl: Optional[str] = None
     role: Optional[str] = "User"
@@ -17,15 +17,18 @@ class User(BaseModel):
     joinedDate: Optional[str] = None
 
 class LoginRequest(BaseModel):
-    identifier: str  # email or phone
+    identifier: str  # email, phone, or username
     password: str
 
 class RegisterRequest(BaseModel):
     name: str
     email: str
-    phone: str
+    username: Optional[str] = ""
+    phone: Optional[str] = ""
     password: str
     location: str
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
 class Listing(BaseModel):
     id: str

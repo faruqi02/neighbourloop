@@ -4,43 +4,64 @@ import {
   Text, 
   TextInput, 
   TouchableOpacity, 
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Keyboard,
-  ScrollView
+  ActivityIndicator, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUserStore } from '../store/useUserStore';
-import { UserPlus, Key, Mail, User, MapPin, Eye, EyeOff, ChevronLeft, Navigation } from 'lucide-react-native';
+import { 
+  Key, 
+  Mail, 
+  User, 
+  MapPin, 
+  Eye, 
+  EyeOff, 
+  ChevronLeft, 
+  Navigation,
+  Phone,
+  AtSign
+} from 'lucide-react-native';
 import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [location, setLocation] = useState('');
+  const [lat, setLat] = useState<number | undefined>(undefined);
+  const [lng, setLng] = useState<number | undefined>(undefined);
+  
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState('');
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
+  const router = useRouter();
+  const { setCurrentUser } = useUserStore();
+
   const handleDetectLocation = async () => {
     setDetecting(true);
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        alert('Keizinan lokasi diperlukan.');
+        alert('Keizinan lokasi diperlukan untuk mengesan kawasan anda.');
         setDetecting(false);
         return;
       }
       let loc = await Location.getCurrentPositionAsync({});
+      setLat(loc.coords.latitude);
+      setLng(loc.coords.longitude);
+
       let geocode = await Location.reverseGeocodeAsync({
         latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude
+        longitude: loc.coords.longitude,
       });
       if (geocode && geocode.length > 0) {
         const p = geocode[0];
@@ -52,19 +73,15 @@ export default function RegisterScreen() {
       setDetecting(false);
     }
   };
-  
-  const router = useRouter();
-  const { setCurrentUser } = useUserStore();
 
   const handleRegister = async () => {
-    // Basic validation
     if (!name || !email || !password || !location) {
-      setError('Sila isi semua maklumat yang diperlukan.');
+      setError('Sila isi semua maklumat mandatori (Nama, Emel, Kata Laluan, Lokasi).');
       return;
     }
 
     if (password.length < 6) {
-      setError('Kata laluan mesti melebihi 6 aksara.');
+      setError('Kata laluan mesti sekurang-kurangnya 6 aksara.');
       return;
     }
 
@@ -72,26 +89,49 @@ export default function RegisterScreen() {
     setLoading(true);
 
     try {
-      // Simulate registration delay for FYP prototype
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      // Auto login after "registration" (since we don't have a real register endpoint in the mock yet)
-      const mockNewUser = {
-        id: `usr_${Math.floor(Math.random() * 10000)}`,
-        name,
-        email,
-        phone: '',
-        neighborhood: location,
-        location,
-        radiusKm: 5,
-        role: 'Penduduk',
-        status: 'Aktif',
+      let backendUrl = 'http://192.168.1.165:8000';
+      const debuggerHost = Constants.expoConfig?.hostUri;
+      if (debuggerHost) {
+        backendUrl = `http://${debuggerHost.split(':')[0]}:8000`;
+      }
+
+      const payload = {
+        name: name.trim(),
+        username: username.trim().replace(/^@/, '') || (email.split('@')[0] || name.trim().toLowerCase().replace(/\s+/g, '_')),
+        email: email.trim(),
+        phone: phone.trim(),
+        password,
+        location: location.trim(),
+        lat,
+        lng,
       };
-      
-      setCurrentUser(mockNewUser);
+
+      let response: Response;
+      try {
+        response = await fetch(`${backendUrl}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        // Fallback to localhost
+        response = await fetch('http://127.0.0.1:8000/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Pendaftaran gagal. Sila cuba lagi.');
+      }
+
+      const userData = await response.json();
+      setCurrentUser(userData);
       router.replace('/(tabs)/');
     } catch (err: any) {
-      setError('Gagal mendaftar. Sila cuba lagi.');
+      setError(err.message || 'Gagal mendaftar ke pangkalan data.');
     } finally {
       setLoading(false);
     }
@@ -111,7 +151,6 @@ export default function RegisterScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-            
           {/* Back Button */}
           <TouchableOpacity 
             onPress={() => router.back()} 
@@ -121,37 +160,36 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           {/* Header Area */}
-          <View className="mb-8">
+          <View className="mb-6">
             <Text className="text-3xl font-black text-[#1E293B] tracking-tight">Daftar Akaun</Text>
-            <Text className="text-slate-500 font-medium mt-2 text-sm leading-5">
-              Sertai komuniti NeighbourLoop dan mulakan kelestarian di kawasan kejiranan anda.
+            <Text className="text-slate-500 font-medium mt-1 text-sm leading-5">
+              Sertai komuniti NeighbourLoop dan mulakan kelestarian di kejiranan anda.
             </Text>
           </View>
 
           {/* Error Message */}
           {error ? (
-            <View className="bg-red-50 p-4 rounded-xl mb-6 border border-red-100 flex-row items-center">
+            <View className="bg-red-50 p-4 rounded-xl mb-4 border border-red-100 flex-row items-center">
               <Text className="text-red-600 text-sm font-semibold flex-1">{error}</Text>
             </View>
           ) : null}
 
           {/* Input Fields */}
-          <View className="space-y-5">
-            
+          <View className="space-y-4">
             {/* Nama Penuh */}
             <View>
-              <Text className="text-xs font-bold text-slate-500 uppercase mb-2 ml-1 tracking-wider">
-                Nama Penuh
+              <Text className="text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-wider">
+                Nama Penuh *
               </Text>
               <View 
-                className={`flex-row items-center bg-white rounded-xl px-4 h-14 shadow-sm shadow-slate-100 border ${
+                className={`flex-row items-center bg-white rounded-xl px-4 h-13 shadow-sm shadow-slate-100 border ${
                   focusedField === 'name' ? 'border-emerald-600' : 'border-slate-200'
                 }`}
                 style={{ borderWidth: focusedField === 'name' ? 2 : 1 }}
               >
-                <User size={20} color={focusedField === 'name' ? '#00875A' : '#94A3B8'} />
+                <User size={18} color={focusedField === 'name' ? '#059669' : '#94A3B8'} />
                 <TextInput
-                  className="flex-1 px-3 text-base text-[#1E293B] font-medium h-full outline-none"
+                  className="flex-1 px-3 text-sm text-[#1E293B] font-medium h-full"
                   placeholder="Contoh: Ahmad Ali"
                   placeholderTextColor="#CBD5E1"
                   value={name}
@@ -162,20 +200,45 @@ export default function RegisterScreen() {
               </View>
             </View>
 
-            {/* Emel */}
-            <View className="mt-4">
-              <Text className="text-xs font-bold text-slate-500 uppercase mb-2 ml-1 tracking-wider">
-                Alamat Emel
+            {/* Nama Pengguna (Username) */}
+            <View className="mt-3">
+              <Text className="text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-wider">
+                Nama Pengguna (Username)
               </Text>
               <View 
-                className={`flex-row items-center bg-white rounded-xl px-4 h-14 shadow-sm shadow-slate-100 border ${
+                className={`flex-row items-center bg-white rounded-xl px-4 h-13 shadow-sm shadow-slate-100 border ${
+                  focusedField === 'username' ? 'border-emerald-600' : 'border-slate-200'
+                }`}
+                style={{ borderWidth: focusedField === 'username' ? 2 : 1 }}
+              >
+                <AtSign size={18} color={focusedField === 'username' ? '#059669' : '#94A3B8'} />
+                <TextInput
+                  className="flex-1 px-3 text-sm text-[#1E293B] font-medium h-full"
+                  placeholder="Contoh: ahmad_ali"
+                  placeholderTextColor="#CBD5E1"
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                  onFocus={() => setFocusedField('username')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </View>
+            </View>
+
+            {/* Emel */}
+            <View className="mt-3">
+              <Text className="text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-wider">
+                Alamat Emel *
+              </Text>
+              <View 
+                className={`flex-row items-center bg-white rounded-xl px-4 h-13 shadow-sm shadow-slate-100 border ${
                   focusedField === 'email' ? 'border-emerald-600' : 'border-slate-200'
                 }`}
                 style={{ borderWidth: focusedField === 'email' ? 2 : 1 }}
               >
-                <Mail size={20} color={focusedField === 'email' ? '#00875A' : '#94A3B8'} />
+                <Mail size={18} color={focusedField === 'email' ? '#059669' : '#94A3B8'} />
                 <TextInput
-                  className="flex-1 px-3 text-base text-[#1E293B] font-medium h-full outline-none"
+                  className="flex-1 px-3 text-sm text-[#1E293B] font-medium h-full"
                   placeholder="ahmad@gmail.com"
                   placeholderTextColor="#CBD5E1"
                   value={email}
@@ -188,21 +251,46 @@ export default function RegisterScreen() {
               </View>
             </View>
 
-            {/* Lokasi Kejiranan */}
-            <View className="mt-4">
-              <Text className="text-xs font-bold text-slate-500 uppercase mb-2 ml-1 tracking-wider">
-                Kawasan Kejiranan
+            {/* No. Telefon / WhatsApp */}
+            <View className="mt-3">
+              <Text className="text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-wider">
+                No Telefon / WhatsApp
               </Text>
               <View 
-                className={`flex-row items-center bg-white rounded-xl px-4 h-14 shadow-sm shadow-slate-100 border ${
+                className={`flex-row items-center bg-white rounded-xl px-4 h-13 shadow-sm shadow-slate-100 border ${
+                  focusedField === 'phone' ? 'border-emerald-600' : 'border-slate-200'
+                }`}
+                style={{ borderWidth: focusedField === 'phone' ? 2 : 1 }}
+              >
+                <Phone size={18} color={focusedField === 'phone' ? '#059669' : '#94A3B8'} />
+                <TextInput
+                  className="flex-1 px-3 text-sm text-[#1E293B] font-medium h-full"
+                  placeholder="Contoh: 012-3456789"
+                  placeholderTextColor="#CBD5E1"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  onFocus={() => setFocusedField('phone')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </View>
+            </View>
+
+            {/* Lokasi Kejiranan */}
+            <View className="mt-3">
+              <Text className="text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-wider">
+                Kawasan Kejiranan *
+              </Text>
+              <View 
+                className={`flex-row items-center bg-white rounded-xl px-4 h-13 shadow-sm shadow-slate-100 border ${
                   focusedField === 'location' ? 'border-emerald-600' : 'border-slate-200'
                 }`}
                 style={{ borderWidth: focusedField === 'location' ? 2 : 1 }}
               >
-                <MapPin size={20} color={focusedField === 'location' ? '#00875A' : '#94A3B8'} />
+                <MapPin size={18} color={focusedField === 'location' ? '#059669' : '#94A3B8'} />
                 <TextInput
-                  className="flex-1 px-3 text-base text-[#1E293B] font-medium h-full outline-none"
-                  placeholder="Contoh: Taman Universiti"
+                  className="flex-1 px-3 text-sm text-[#1E293B] font-medium h-full"
+                  placeholder="Contoh: Taman Universiti, JB"
                   placeholderTextColor="#CBD5E1"
                   value={location}
                   onChangeText={setLocation}
@@ -214,28 +302,33 @@ export default function RegisterScreen() {
                   className="p-2 bg-emerald-50 rounded-lg"
                 >
                   {detecting ? (
-                    <ActivityIndicator size="small" color="#00875A" />
+                    <ActivityIndicator size="small" color="#059669" />
                   ) : (
-                    <Navigation size={18} color="#00875A" />
+                    <Navigation size={18} color="#059669" />
                   )}
                 </TouchableOpacity>
               </View>
+              {lat && lng ? (
+                <Text className="text-[11px] text-emerald-600 font-semibold mt-1 ml-1">
+                  GPS dikesan: {lat.toFixed(4)}, {lng.toFixed(4)}
+                </Text>
+              ) : null}
             </View>
 
             {/* Kata Laluan */}
-            <View className="mt-4">
-              <Text className="text-xs font-bold text-slate-500 uppercase mb-2 ml-1 tracking-wider">
-                Kata Laluan
+            <View className="mt-3">
+              <Text className="text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1 tracking-wider">
+                Kata Laluan *
               </Text>
               <View 
-                className={`flex-row items-center bg-white rounded-xl px-4 h-14 shadow-sm shadow-slate-100 border ${
+                className={`flex-row items-center bg-white rounded-xl px-4 h-13 shadow-sm shadow-slate-100 border ${
                   focusedField === 'password' ? 'border-emerald-600' : 'border-slate-200'
                 }`}
                 style={{ borderWidth: focusedField === 'password' ? 2 : 1 }}
               >
-                <Key size={20} color={focusedField === 'password' ? '#00875A' : '#94A3B8'} />
+                <Key size={18} color={focusedField === 'password' ? '#059669' : '#94A3B8'} />
                 <TextInput
-                  className="flex-1 px-3 text-base text-[#1E293B] font-medium h-full outline-none"
+                  className="flex-1 px-3 text-sm text-[#1E293B] font-medium h-full"
                   placeholder="Minimum 6 aksara..."
                   placeholderTextColor="#CBD5E1"
                   value={password}
@@ -246,54 +339,41 @@ export default function RegisterScreen() {
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} className="p-1">
                   {showPassword ? (
-                    <EyeOff size={20} color={focusedField === 'password' ? '#00875A' : '#94A3B8'} />
+                    <EyeOff size={18} color={focusedField === 'password' ? '#059669' : '#94A3B8'} />
                   ) : (
-                    <Eye size={20} color={focusedField === 'password' ? '#00875A' : '#94A3B8'} />
+                    <Eye size={18} color={focusedField === 'password' ? '#059669' : '#94A3B8'} />
                   )}
                 </TouchableOpacity>
               </View>
             </View>
-
           </View>
 
           {/* Action Button */}
           <TouchableOpacity
             onPress={handleRegister}
             disabled={loading || !isFormValid}
-            className={`w-full h-14 rounded-xl items-center flex-row justify-center mt-10 shadow-md ${
-              loading || !isFormValid
-                ? 'bg-emerald-100 shadow-transparent'
-                : 'shadow-emerald-900/20'
+            className={`w-full h-14 rounded-2xl items-center justify-center mt-8 shadow-md ${
+              isFormValid && !loading 
+                ? 'bg-emerald-600 shadow-emerald-900/20' 
+                : 'bg-slate-300 shadow-none'
             }`}
-            style={{ backgroundColor: loading || !isFormValid ? '#E2E8F0' : '#00875A' }}
           >
             {loading ? (
-              <ActivityIndicator color="#00875A" />
+              <ActivityIndicator color="white" />
             ) : (
-              <>
-                <UserPlus size={20} color={loading || !isFormValid ? '#94A3B8' : 'white'} />
-                <Text
-                  className={`font-bold text-base ml-2 ${
-                    loading || !isFormValid ? 'text-slate-400' : 'text-white'
-                  }`}
-                >
-                  Daftar Akaun
-                </Text>
-              </>
+              <Text className="text-white font-bold text-base tracking-wide">Daftar Sekarang</Text>
             )}
           </TouchableOpacity>
 
-          {/* Bottom Login Prompt */}
-          <View className="flex-row justify-center mt-8">
-            <Text className="text-slate-500 font-medium text-sm">Sudah mempunyai akaun? </Text>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text className="font-bold text-sm" style={{ color: '#00875A' }}>Log Masuk</Text>
+          {/* Login Redirection */}
+          <View className="flex-row justify-center mt-6">
+            <Text className="text-slate-500 text-sm font-medium">Sudah mempunyai akaun? </Text>
+            <TouchableOpacity onPress={() => router.replace('/login')}>
+              <Text className="text-emerald-700 font-bold text-sm">Log Masuk</Text>
             </TouchableOpacity>
           </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-

@@ -1,10 +1,13 @@
 export interface User {
   id?: string;
   name: string;
+  username?: string;
   email: string;
   phone: string;
-  telegram_id?: string;
   neighborhood: string;
+  location?: string;
+  lat?: number;
+  lng?: number;
   radius_km: number;
   role: 'User' | 'Admin';
   status: 'Aktif' | 'Digantung';

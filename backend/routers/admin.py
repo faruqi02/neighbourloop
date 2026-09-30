@@ -92,13 +92,19 @@ def create_admin_user(user: dict):
     from routers.auth import hash_password
     
     user_id = "u_" + str(uuid.uuid4())[:8]
+    email_val = user.get("email", "")
+    username_val = user.get("username") or (email_val.split("@")[0] if email_val else "")
+    
     payload = {
         "action": "create_user",
         "id": user_id,
         "name": user.get("name"),
-        "email": user.get("email"),
+        "username": username_val,
+        "email": email_val,
         "phone": format_phone(user.get("phone")),
-        "location": user.get("neighborhood"),
+        "location": user.get("neighborhood") or user.get("location"),
+        "lat": user.get("lat"),
+        "lng": user.get("lng"),
         "role": user.get("role", "User")
     }
     
@@ -126,13 +132,19 @@ def create_admin_user(user: dict):
 def update_user(user_id: str, user: dict):
     from routers.auth import hash_password
     
+    email_val = user.get("email", "")
     update_data = {
         "name": user.get("name"),
-        "email": user.get("email"),
+        "username": user.get("username") or (email_val.split("@")[0] if email_val else ""),
+        "email": email_val,
         "phone": format_phone(user.get("phone")),
         "location": user.get("neighborhood") or user.get("location"),
         "role": user.get("role")
     }
+    if "lat" in user:
+        update_data["lat"] = user["lat"]
+    if "lng" in user:
+        update_data["lng"] = user["lng"]
     
     # Only update password if provided
     if user.get("newPassword"):

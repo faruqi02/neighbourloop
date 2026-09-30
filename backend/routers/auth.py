@@ -33,8 +33,14 @@ def login(data: LoginRequest):
     for u in users:
         email = u.get("email", "")
         phone = str(u.get("phone", ""))
-        # Match identifier (email or phone)
-        if (email and email.lower() == data.identifier.lower()) or (phone and phone == data.identifier):
+        username = str(u.get("username", ""))
+        # Match identifier (email, phone, or username)
+        id_clean = data.identifier.strip().lower()
+        if (
+            (email and email.lower() == id_clean)
+            or (phone and phone == data.identifier.strip())
+            or (username and username.lower() == id_clean.lstrip('@'))
+        ):
             db_pass = str(u.get("password_hash", "") or u.get("password", ""))
             
             is_valid = False
@@ -48,12 +54,17 @@ def login(data: LoginRequest):
 
             if is_valid:
                 # Map back to User schema
+                raw_lat = u.get("lat")
+                raw_lng = u.get("lng")
                 return User(
                     id=u.get("id", ""),
                     name=u.get("name", ""),
                     email=email,
+                    username=username or (email.split('@')[0] if email else ""),
                     phone=phone,
                     location=u.get("location", ""),
+                    lat=float(raw_lat) if raw_lat not in [None, ""] else None,
+                    lng=float(raw_lng) if raw_lng not in [None, ""] else None,
                     avatarUrl=u.get("avatarUrl"),
                     role=u.get("role", "User"),
                     status=u.get("status", "Aktif")
@@ -82,14 +93,18 @@ def register(data: RegisterRequest):
     from datetime import datetime
     
     user_id = "u_" + str(uuid.uuid4())[:8]
+    username_val = data.username.strip().lstrip('@') if data.username else (data.email.split('@')[0] if data.email else "")
     
     payload = {
         "action": "create_user",
         "id": user_id,
         "name": data.name,
+        "username": username_val,
         "email": data.email,
         "phone": format_phone(data.phone),
         "location": data.location,
+        "lat": data.lat,
+        "lng": data.lng,
         "role": "User",
         "password_hash": hash_password(data.password)
     }
@@ -98,12 +113,17 @@ def register(data: RegisterRequest):
         res_data = res.json()
         if res_data.get("success") and "user" in res_data:
             u = res_data["user"]
+            raw_lat = u.get("lat", data.lat)
+            raw_lng = u.get("lng", data.lng)
             return User(
-                id=u.get("id", ""),
-                name=u.get("name", ""),
-                email=u.get("email", ""),
-                phone=u.get("phone", ""),
-                location=u.get("location", ""),
+                id=u.get("id", user_id),
+                name=u.get("name", data.name),
+                email=u.get("email", data.email),
+                username=u.get("username", username_val),
+                phone=u.get("phone", data.phone),
+                location=u.get("location", data.location),
+                lat=float(raw_lat) if raw_lat not in [None, ""] else None,
+                lng=float(raw_lng) if raw_lng not in [None, ""] else None,
                 avatarUrl=u.get("avatarUrl"),
                 role=u.get("role", "User"),
                 status=u.get("status", "Aktif")

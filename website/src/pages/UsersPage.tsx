@@ -6,7 +6,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 export const UsersPage = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', role: 'User', neighborhood: '', password: '' });
+  const [newUser, setNewUser] = useState({ name: '', username: '', email: '', phone: '', role: 'User', neighborhood: '', password: '' });
   const [editingUser, setEditingUser] = useState<any>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -34,7 +34,7 @@ export const UsersPage = () => {
       const created = await api.createUser(newUser);
       setUsers([...users, created]);
       setShowModal(false);
-      setNewUser({ name: '', email: '', phone: '', role: 'User', neighborhood: '', password: '' });
+      setNewUser({ name: '', username: '', email: '', phone: '', role: 'User', neighborhood: '', password: '' });
       showToast("Berjaya tambah pengguna!", "success");
     } catch (e) {
       showToast("Gagal tambah pengguna", "error");
@@ -60,7 +60,7 @@ export const UsersPage = () => {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!userToDelete) return;
+    if (!userToDelete || !userToDelete.id) return;
     setIsSubmitting(true);
     try {
       await api.deleteUser(userToDelete.id);
@@ -108,7 +108,7 @@ export const UsersPage = () => {
         <table className="w-full text-left">
           <thead className="bg-gray-50 text-gray-500 text-sm">
             <tr>
-              <th className="px-6 py-4 font-medium">Nama</th>
+              <th className="px-6 py-4 font-medium">Nama & Username</th>
               <th className="px-6 py-4 font-medium">Peranan</th>
               <th className="px-6 py-4 font-medium">No. Telefon</th>
               <th className="px-6 py-4 font-medium">Kejiranan</th>
@@ -126,7 +126,8 @@ export const UsersPage = () => {
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">{u.name || 'Unknown'}</p>
-                      <p className="text-xs text-gray-500">{u.email}</p>
+                      <p className="text-xs text-emerald-600 font-bold">@{u.username || (u.email ? u.email.split('@')[0] : 'pengguna')}</p>
+                      <p className="text-[11px] text-gray-400">{u.email}</p>
                     </div>
                   </div>
                 </td>
@@ -165,6 +166,10 @@ export const UsersPage = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nama</label>
                 <input required type="text" className="w-full border border-gray-300 rounded-lg p-2" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Pengguna (Username)</label>
+                <input type="text" placeholder="Contoh: aisyah_jb" className="w-full border border-gray-300 rounded-lg p-2" value={newUser.username} onChange={e => setNewUser({...newUser, username: e.target.value})} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">E-mel</label>
@@ -221,6 +226,10 @@ export const UsersPage = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nama</label>
                 <input required type="text" className="w-full border border-gray-300 rounded-lg p-2" value={editingUser.name || ''} onChange={e => setEditingUser({...editingUser, name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Pengguna (Username)</label>
+                <input type="text" placeholder="Contoh: aisyah_jb" className="w-full border border-gray-300 rounded-lg p-2" value={editingUser.username || ''} onChange={e => setEditingUser({...editingUser, username: e.target.value})} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">E-mel</label>

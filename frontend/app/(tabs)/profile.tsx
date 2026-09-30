@@ -78,7 +78,7 @@ export default function ProfileScreen() {
               </View>
             ) : null}
           </View>
-          <Text className="text-gray-400 text-xs mt-0.5">{currentUser.email}</Text>
+          <Text className="text-emerald-600 text-sm font-bold mt-0.5">@{currentUser.username || (currentUser.email ? currentUser.email.split('@')[0] : 'pengguna')}</Text>
 
           {/* Location Badge */}
           <TouchableOpacity
@@ -153,7 +153,7 @@ export default function ProfileScreen() {
             </View>
             <View className="flex-1 ml-3.5">
               <Text className="text-gray-900 text-sm font-bold">Maklumat Perhubungan Pengguna</Text>
-              <Text className="text-gray-400 text-xs mt-0.5">Ubah No. Telefon, WhatsApp, Telegram & Nota</Text>
+              <Text className="text-gray-400 text-xs mt-0.5">Ubah Nama Pengguna (Username) & No. Telefon</Text>
             </View>
             <ChevronRight size={18} color="#9ca3af" />
           </TouchableOpacity>

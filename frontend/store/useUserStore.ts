@@ -10,12 +10,10 @@ interface UserState {
   setCurrentUser: (user: User) => void;
   logout: () => void;
   switchUserById: (userId: string) => void;
-  updateLocation: (location: string, radiusKm: number) => void;
+  updateLocation: (location: string, radiusKm: number, lat?: number, lng?: number) => void;
   updateContactDetails: (
     phone?: string,
-    telegram?: string,
-    contactNotes?: string,
-    preferredContactMethod?: User['preferredContactMethod']
+    username?: string
   ) => void;
   deleteUser: (userId: string) => void;
   updateUserStatus: (userId: string, status: 'Aktif' | 'Digantung') => void;
@@ -35,11 +33,14 @@ export const useUserStore = create<UserState>()(
     return target ? { currentUser: target } : {};
   }),
 
-  updateLocation: (location, radiusKm) => set((state) => {
+  updateLocation: (location, radiusKm, lat, lng) => set((state) => {
+    if (!state.currentUser) return {};
     const updated = {
       ...state.currentUser,
       location,
       radiusKm,
+      lat: lat !== undefined ? lat : state.currentUser.lat,
+      lng: lng !== undefined ? lng : state.currentUser.lng,
     };
     return {
       currentUser: updated,
@@ -47,13 +48,12 @@ export const useUserStore = create<UserState>()(
     };
   }),
 
-  updateContactDetails: (phone, telegram, contactNotes, preferredContactMethod) => set((state) => {
+  updateContactDetails: (phone, username) => set((state) => {
+    if (!state.currentUser) return {};
     const updated = {
       ...state.currentUser,
       phone: phone !== undefined ? phone : state.currentUser.phone,
-      telegram: telegram !== undefined ? telegram : state.currentUser.telegram,
-      contactNotes: contactNotes !== undefined ? contactNotes : state.currentUser.contactNotes,
-      preferredContactMethod: preferredContactMethod !== undefined ? preferredContactMethod : state.currentUser.preferredContactMethod,
+      username: username !== undefined ? username : state.currentUser.username,
     };
     return {
       currentUser: updated,

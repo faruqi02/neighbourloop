@@ -8,7 +8,9 @@ export const RegisterPage = () => {
   const navigate = useNavigate();
   
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,8 +34,9 @@ export const RegisterPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           name, 
+          username: username.trim().replace(/^@/, '') || email.split('@')[0],
           email, 
-          phone: '', 
+          phone, 
           location, 
           password 
         }),
@@ -97,6 +100,22 @@ export const RegisterPage = () => {
 
           <div className="mb-4">
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">
+              Nama Pengguna (Username)
+            </label>
+            <div className="relative">
+              <User className="absolute left-4 top-3.5 text-gray-400" size={18} />
+              <input
+                type="text"
+                placeholder="Contoh: ahmad_ali"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-11 pr-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">
               Alamat Emel
             </label>
             <div className="relative">
@@ -108,6 +127,21 @@ export const RegisterPage = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 pl-11 pr-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 required
+              />
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">
+              No Telefon / WhatsApp
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Contoh: 012-3456789"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
               />
             </div>
           </div>

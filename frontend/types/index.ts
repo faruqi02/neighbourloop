@@ -1,12 +1,12 @@
 export interface User {
   id: string;
   name: string;
+  username?: string;
   email: string;
   phone?: string;
-  telegram?: string;
-  contactNotes?: string;
-  preferredContactMethod?: 'Semua' | 'WhatsApp' | 'Telegram' | 'Panggilan' | 'Chat Aplikasi';
   location: string;
+  lat?: number;
+  lng?: number;
   radiusKm: number;
   avatarUrl?: string;
   role?: 'User' | 'Admin';

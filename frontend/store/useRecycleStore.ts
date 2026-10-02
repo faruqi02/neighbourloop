@@ -8,7 +8,9 @@ interface RecycleState {
   donations: DonationItem[];
   loading: boolean;
   fetchRecycleData: () => Promise<void>;
-  addDonation: (donationData: Omit<DonationItem, 'id' | 'createdAt' | 'status'>) => Promise<boolean>;
+  addDonation: (
+    donationData: Omit<DonationItem, 'id' | 'createdAt' | 'status'> & { imageBase64?: string }
+  ) => Promise<boolean>;
   deleteDonation: (id: string) => Promise<boolean>;
   claimDonation: (donationId: string, claimerName: string) => Promise<boolean>;
   getSmartRecommendation: (
@@ -43,10 +45,13 @@ export const useRecycleStore = create<RecycleState>((set, get) => ({
 
   addDonation: async (donationData) => {
     const currentUser = useUserStore.getState().currentUser;
-    const userId = currentUser ? currentUser.id : 'u1';
+    const userId = currentUser ? currentUser.id : (donationData.donorId || 'u1');
+    const donorName = (donationData.donorName || currentUser?.username || currentUser?.name || 'Penderma').replace(/^@/, '');
 
     const tempItem: DonationItem = {
       ...donationData,
+      donorId: userId,
+      donorName: donorName,
       id: `d_${Date.now()}`,
       status: 'Available',
       createdAt: 'Baru sahaja',
@@ -61,6 +66,9 @@ export const useRecycleStore = create<RecycleState>((set, get) => ({
           description: donationData.description,
           category: donationData.category,
           imageUrl: donationData.imageUrl,
+          imageBase64: donationData.imageBase64,
+          donorId: userId,
+          donorName: donorName,
           donorPhone: donationData.donorPhone,
           donorContactNotes: donationData.donorContactNotes,
         }),

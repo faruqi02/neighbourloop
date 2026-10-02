@@ -193,12 +193,16 @@ def get_donations(status: Optional[str] = Query(None, description="Available or 
                     else:
                         st = "Available"
 
+                    raw_img = str(d.get("imageUrl") or "").strip()
+                    if not raw_img or raw_img.startswith("file:") or raw_img.startswith("blob:"):
+                        raw_img = "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400"
+
                     parsed.append(DonationItem(
                         id=str(d.get("id") or f"d_{uuid.uuid4().hex[:6]}"),
                         title=str(d.get("title") or "Barang Derma"),
                         description=str(d.get("description") or ""),
                         category=str(d.get("category") or "Pakaian"),
-                        imageUrl=str(d.get("imageUrl") or "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400"),
+                        imageUrl=raw_img,
                         donorId=str(d.get("donorId") or "u1"),
                         donorName=str(d.get("donorName") or "Penderma"),
                         donorPhone=str(d.get("donorPhone") or ""),
@@ -221,20 +225,62 @@ def get_donations(status: Optional[str] = Query(None, description="Available or 
 
 @router.post("/donations", response_model=DonationItem)
 def create_donation(data: DonationCreate, background_tasks: BackgroundTasks, user_id: str = Query("u1")):
-    donor_name = "Penderma"
-    donor_phone = data.donorPhone or ""
+    donor_id = data.donorId or user_id or "u1"
+    donor_name = data.donorName or "Penderma"
+    if donor_name == "Penderma":
+        try:
+            from routers.admin import CACHE as ADMIN_CACHE
+            if ADMIN_CACHE.get("users", {}).get("data"):
+                for u in ADMIN_CACHE["users"]["data"]:
+                    if u.get("id") == donor_id:
+                        donor_name = u.get("username") or u.get("name") or "Penderma"
+                        break
+        except Exception:
+            pass
 
+    if donor_name:
+        donor_name = str(donor_name).strip().lstrip('@')
+    else:
+        donor_name = "Penderma"
+
+    donor_phone = data.donorPhone or ""
     new_id = f"d_{uuid.uuid4().hex[:8]}"
     created_at = time.strftime("%Y-%m-%d %H:%M")
-    img = data.imageUrl or "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400"
+
+    # Image upload to Google Drive if base64 provided
+    img_url = data.imageUrl or "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400"
+    base64_data = data.imageBase64
+    if not base64_data and img_url and img_url.startswith("data:image"):
+        base64_data = img_url
+
+    if base64_data:
+        try:
+            upload_payload = {
+                "action": "upload_file",
+                "base64": base64_data,
+                "filename": f"donation_{new_id}_{int(time.time())}.jpg",
+                "mimeType": "image/jpeg"
+            }
+            up_res = requests.post(APPS_SCRIPT_URL, json=upload_payload, timeout=60.0)
+            up_json = up_res.json()
+            if isinstance(up_json, dict):
+                if up_json.get("url"):
+                    img_url = up_json["url"]
+                elif up_json.get("fileId"):
+                    img_url = f"https://lh3.googleusercontent.com/d/{up_json['fileId']}"
+        except Exception as e:
+            print("Error uploading donation image to Google Drive:", e)
+    elif img_url.startswith("blob:") or img_url.startswith("file:"):
+        # Prevent saving raw device local paths (file:///var/mobile/...) or browser blob URLs to Google Sheet
+        img_url = "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400"
 
     row_data = {
         "id": new_id,
         "title": data.title,
         "description": data.description,
         "category": data.category,
-        "imageUrl": img,
-        "donorId": user_id,
+        "imageUrl": img_url,
+        "donorId": donor_id,
         "donorName": donor_name,
         "donorPhone": donor_phone,
         "donorContactNotes": data.donorContactNotes or "",

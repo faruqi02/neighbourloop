@@ -7,7 +7,8 @@ import {
   TouchableOpacity, 
   Image, 
   Modal, 
-  Linking 
+  Linking,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useNavigation } from 'expo-router';
@@ -81,8 +82,30 @@ export default function RecycleScreen() {
   const [donationDesc, setDonationDesc] = useState('');
   const [donationCat, setDonationCat] = useState(RECYCLE_CATEGORIES[0]);
   const [donationImage, setDonationImage] = useState('https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400');
+  const [donationImageBase64, setDonationImageBase64] = useState<string | undefined>(undefined);
+  const [isUploading, setIsUploading] = useState(false);
   const [donorPhone, setDonorPhone] = useState(currentUser?.phone || '');
   const [donorNotes, setDonorNotes] = useState('');
+
+  // Helper to ensure image uri is converted to base64 if needed
+  const ensureBase64 = async (uri: string): Promise<string | undefined> => {
+    if (!uri) return undefined;
+    if (uri.startsWith('data:image')) return uri;
+    try {
+      const res = await fetch(uri);
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.onerror = () => resolve(undefined);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return undefined;
+    }
+  };
 
   // Success Feedback Modal
   const [successVisible, setSuccessVisible] = useState(false);
@@ -122,31 +145,53 @@ export default function RecycleScreen() {
     setSuccessVisible(true);
   };
 
-  const handleCreateDonation = () => {
+  const handleCreateDonation = async () => {
     if (!currentUser) return;
     if (!donationTitle.trim()) {
       alert('Sila masukkan tajuk barangan derma.');
       return;
     }
 
-    addDonation({
-      title: donationTitle,
-      description: donationDesc || 'Barangan elok disumbangkan untuk jiran yang memerlukan.',
-      category: donationCat,
-      imageUrl: donationImage || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400',
-      donorId: currentUser.id,
-      donorName: currentUser.name,
-      donorPhone: donorPhone.trim() || undefined,
-      donorContactNotes: donorNotes.trim() || undefined,
-      distance: 0.5,
-    });
+    setIsUploading(true);
 
-    setDonateModalVisible(false);
-    setDonationTitle('');
-    setDonationDesc('');
-    setSuccessTitle('Barang Derma Diterbitkan!');
-    setSuccessMsg('Barangan anda kini sedia untuk dituntut oleh jiran sekitar secara percuma.');
-    setSuccessVisible(true);
+    try {
+      let base64 = donationImageBase64;
+      if (!base64 && donationImage && (donationImage.startsWith('blob:') || donationImage.startsWith('file:') || donationImage.startsWith('data:image'))) {
+        base64 = await ensureBase64(donationImage);
+      }
+
+      const donorName = (currentUser.username || currentUser.name || 'Penderma').replace(/^@/, '');
+
+      const success = await addDonation({
+        title: donationTitle,
+        description: donationDesc || 'Barangan elok disumbangkan untuk jiran yang memerlukan.',
+        category: donationCat,
+        imageUrl: donationImage || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400',
+        imageBase64: base64,
+        donorId: currentUser.id,
+        donorName: donorName,
+        donorPhone: donorPhone.trim() || undefined,
+        donorContactNotes: donorNotes.trim() || undefined,
+        distance: 0.5,
+      });
+
+      if (success !== false) {
+        setDonateModalVisible(false);
+        setDonationTitle('');
+        setDonationDesc('');
+        setDonationImage('https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400');
+        setDonationImageBase64(undefined);
+        setSuccessTitle('Barang Derma Diterbitkan!');
+        setSuccessMsg('Barangan anda kini sedia untuk dituntut oleh jiran sekitar secara percuma.');
+        setSuccessVisible(true);
+      } else {
+        alert('Gagal menyiarkan barang derma ke pangkalan data.');
+      }
+    } catch (e) {
+      alert('Ralat ketika memproses muat naik gambar derma.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleCallCenter = (phone?: string) => {
@@ -662,7 +707,10 @@ export default function RecycleScreen() {
               <ImagePickerButton
                 title="Pilih / Muat Naik Gambar Barang Derma"
                 selectedImageUri={donationImage}
-                onImageSelected={setDonationImage}
+                onImageSelected={(uri, base64) => {
+                  setDonationImage(uri);
+                  setDonationImageBase64(base64);
+                }}
               />
 
               <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Nama Barangan</Text>
@@ -723,9 +771,17 @@ export default function RecycleScreen() {
 
               <TouchableOpacity
                 onPress={handleCreateDonation}
-                className="w-full bg-purple-700 py-4 rounded-2xl items-center shadow-md shadow-purple-900/30 mb-6"
+                disabled={isUploading}
+                className={`w-full ${isUploading ? 'bg-purple-400' : 'bg-purple-700'} py-4 rounded-2xl items-center shadow-md shadow-purple-900/30 mb-6`}
               >
-                <Text className="text-white font-bold text-base">Siarkan Barang Derma Percuma</Text>
+                {isUploading ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator color="white" className="mr-2" />
+                    <Text className="text-white font-bold text-base">Memuat Naik ke Google Drive...</Text>
+                  </View>
+                ) : (
+                  <Text className="text-white font-bold text-base">Siarkan Barang Derma Percuma</Text>
+                )}
               </TouchableOpacity>
             </ScrollView>
           </View>

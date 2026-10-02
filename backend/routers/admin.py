@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from typing import List
+from typing import List, Optional
 import httpx
 import uuid
 from schemas import User, AdminStatsResponse
@@ -192,3 +192,45 @@ def delete_user(user_id: str):
     except Exception as e:
         print("Error deleting user:", e)
         raise HTTPException(status_code=500, detail="Failed to delete user in Apps Script")
+
+@router.put("/users/{user_id}/block")
+@router.post("/users/{user_id}/block")
+def toggle_block_user(user_id: str, block: Optional[bool] = Query(None)):
+    import requests
+    new_status = "Digantung"
+    if block is False:
+        new_status = "Aktif"
+    elif block is True:
+        new_status = "Digantung"
+    else:
+        current_status = "Aktif"
+        if CACHE["users"]["data"]:
+            for u in CACHE["users"]["data"]:
+                if u.get("id") == user_id:
+                    current_status = u.get("status", "Aktif")
+                    break
+        new_status = "Aktif" if current_status == "Digantung" else "Digantung"
+
+    payload = {
+        "action": "update",
+        "sheet": "Users",
+        "id": user_id,
+        "data": {"status": new_status}
+    }
+    try:
+        requests.post(APPS_SCRIPT_URL, json=payload, allow_redirects=True, timeout=60.0)
+        CACHE["users"]["timestamp"] = 0
+        if CACHE["users"]["data"]:
+            for u in CACHE["users"]["data"]:
+                if u.get("id") == user_id:
+                    u["status"] = new_status
+                    break
+        return {
+            "success": True, 
+            "id": user_id, 
+            "status": new_status, 
+            "isBlocked": new_status == "Digantung",
+            "message": f"Pengguna telah {'disekat/digantung' if new_status == 'Digantung' else 'diaktifkan semula'}."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import type { HelpRequest } from '../types';
-import { Trash2, Search, CheckCircle2, HeartHandshake, User, Tag } from 'lucide-react';
+import { Trash2, Search, CheckCircle2, HeartHandshake, User, Tag, Ban, ShieldAlert, ShieldCheck, Eye } from 'lucide-react';
 
 export const HelpPage = () => {
   const [requests, setRequests] = useState<HelpRequest[]>([]);
@@ -9,10 +9,13 @@ export const HelpPage = () => {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('Semua');
   const [categoryFilter, setCategoryFilter] = useState('Semua');
+  const [statusFilter, setStatusFilter] = useState<'Semua' | 'Dibuka' | 'Selesai' | 'Disekat'>('Semua');
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<HelpRequest | null>(null);
   const [itemToDelete, setItemToDelete] = useState<HelpRequest | null>(null);
+  const [itemToBlock, setItemToBlock] = useState<HelpRequest | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -107,7 +110,36 @@ export const HelpPage = () => {
     }
   };
 
+  const handleToggleBlock = async (item: HelpRequest, explicitBlock?: boolean) => {
+    setIsSubmitting(true);
+    const targetBlocked = explicitBlock !== undefined ? explicitBlock : !(item.isBlocked || item.status === 'Disekat');
+    try {
+      await api.toggleBlockHelpRequest(item.id, targetBlocked);
+      showToast(targetBlocked ? 'Bantuan berjaya disekat daripada paparan umum!' : 'Sekatan bantuan dibuka semula!', 'success');
+      setItemToBlock(null);
+      if (selectedRequest && selectedRequest.id === item.id) {
+        setSelectedRequest({
+          ...selectedRequest,
+          status: targetBlocked ? 'Disekat' : 'Open',
+          isBlocked: targetBlocked
+        });
+      }
+      fetchHelpRequests();
+    } catch (err) {
+      showToast('Gagal mengubah status sekatan bantuan', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const filteredRequests = requests.filter((item) => {
+    const isItemBlocked = item.isBlocked || item.status === 'Disekat';
+    const matchStatus =
+      statusFilter === 'Semua' ||
+      (statusFilter === 'Disekat' && isItemBlocked) ||
+      (statusFilter === 'Selesai' && item.status === 'Completed' && !isItemBlocked) ||
+      (statusFilter === 'Dibuka' && item.status !== 'Completed' && !isItemBlocked);
+
     const matchType =
       typeFilter === 'Semua' ||
       item.type?.toLowerCase() === typeFilter.toLowerCase();
@@ -117,7 +149,8 @@ export const HelpPage = () => {
       item.title?.toLowerCase().includes(search.toLowerCase()) ||
       item.description?.toLowerCase().includes(search.toLowerCase()) ||
       item.requesterName?.toLowerCase().includes(search.toLowerCase());
-    return matchType && matchCat && matchSearch;
+
+    return matchStatus && matchType && matchCat && matchSearch;
   });
 
   return (
@@ -164,7 +197,27 @@ export const HelpPage = () => {
           />
         </div>
 
-        <div className="flex gap-2 items-center flex-wrap">
+        <div className="flex gap-4 items-center flex-wrap">
+          {/* Status Filter */}
+          <div className="flex gap-1.5 items-center">
+            <span className="text-xs font-semibold text-gray-400 uppercase mr-1">Status:</span>
+            {(['Semua', 'Dibuka', 'Selesai', 'Disekat'] as const).map((st) => (
+              <button
+                key={st}
+                onClick={() => setStatusFilter(st)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  statusFilter === st
+                    ? st === 'Disekat'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-purple-700 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
+
           {/* Type Filter */}
           <div className="flex bg-gray-100 p-1 rounded-xl">
             {['Semua', 'Permintaan', 'Tawaran'].map((t) => (
@@ -284,12 +337,18 @@ export const HelpPage = () => {
 
                     {/* Status */}
                     <td className="px-6 py-4">
-                      {item.status === 'Completed' ? (
+                      {item.isBlocked || item.status === 'Disekat' ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                          <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                          Disekat
+                        </span>
+                      ) : item.status === 'Completed' ? (
                         <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                           Selesai {item.fulfilledBy ? `(${item.fulfilledBy})` : ''}
                         </span>
                       ) : (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                           Dibuka
                         </span>
                       )}
@@ -302,8 +361,30 @@ export const HelpPage = () => {
 
                     {/* Actions */}
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {item.status !== 'Completed' && (
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => setSelectedRequest(item)}
+                          className="p-1.5 text-gray-400 hover:text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                          title="Lihat Butiran"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setItemToBlock(item)}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            item.isBlocked || item.status === 'Disekat'
+                              ? 'text-emerald-600 hover:bg-emerald-50'
+                              : 'text-amber-500 hover:text-amber-600 hover:bg-amber-50'
+                          }`}
+                          title={item.isBlocked || item.status === 'Disekat' ? 'Buka Sekatan Bantuan' : 'Sekat Bantuan Ini (Admin Moderation)'}
+                        >
+                          {item.isBlocked || item.status === 'Disekat' ? (
+                            <ShieldCheck className="w-4 h-4" />
+                          ) : (
+                            <Ban className="w-4 h-4" />
+                          )}
+                        </button>
+                        {item.status !== 'Completed' && !(item.isBlocked || item.status === 'Disekat') && (
                           <button
                             onClick={() => handleFulfill(item.id)}
                             className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
@@ -456,6 +537,141 @@ export const HelpPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Details Modal */}
+      {selectedRequest && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl animate-in fade-in zoom-in-95">
+            {selectedRequest.imageUrl && (
+              <div className="relative mb-4">
+                <img
+                  src={selectedRequest.imageUrl}
+                  alt={selectedRequest.title}
+                  className="w-full h-48 rounded-xl object-cover bg-gray-100"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-between items-baseline mb-2">
+              <h2 className="text-xl font-bold text-gray-900">{selectedRequest.title}</h2>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                selectedRequest.type?.toLowerCase() === 'tawaran' ? 'bg-amber-100 text-amber-800' : 'bg-purple-100 text-purple-800'
+              }`}>
+                {selectedRequest.type}
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+              {selectedRequest.description || 'Tiada keterangan lanjut.'}
+            </p>
+
+            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-1.5 text-xs text-gray-600 mb-5">
+              <p>
+                <span className="font-semibold text-gray-400">Status:</span>{' '}
+                <span className={`font-bold ${selectedRequest.isBlocked || selectedRequest.status === 'Disekat' ? 'text-rose-600' : (selectedRequest.status === 'Completed' ? 'text-gray-600' : 'text-emerald-600')}`}>
+                  {selectedRequest.isBlocked || selectedRequest.status === 'Disekat' ? 'Disekat oleh Admin' : (selectedRequest.status === 'Completed' ? 'Selesai' : 'Dibuka (Aktif)')}
+                </span>
+              </p>
+              <p>
+                <span className="font-semibold text-gray-400">Kategori:</span> {selectedRequest.category}
+              </p>
+              <p>
+                <span className="font-semibold text-gray-400">Pemohon / Pemberi:</span> @{selectedRequest.requesterName}
+              </p>
+              {selectedRequest.requesterPhone && (
+                <p>
+                  <span className="font-semibold text-gray-400">No. Telefon:</span> {selectedRequest.requesterPhone}
+                </p>
+              )}
+              {selectedRequest.requesterContactNotes && (
+                <p>
+                  <span className="font-semibold text-gray-400">Nota:</span> {selectedRequest.requesterContactNotes}
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleToggleBlock(selectedRequest)}
+                disabled={isSubmitting}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                  selectedRequest.isBlocked || selectedRequest.status === 'Disekat'
+                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                }`}
+              >
+                {selectedRequest.isBlocked || selectedRequest.status === 'Disekat' ? (
+                  <>
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    Buka Sekatan Bantuan
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4 text-rose-600" />
+                    Sekat Bantuan (Admin)
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => setSelectedRequest(null)}
+                className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block Confirmation Modal */}
+      {itemToBlock && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl animate-in fade-in zoom-in-95">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+            }`}>
+              {itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? (
+                <ShieldCheck className="w-6 h-6" />
+              ) : (
+                <Ban className="w-6 h-6" />
+              )}
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 text-center mb-1">
+              {itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? 'Buka Sekatan Bantuan?' : 'Sekat Bantuan Ini?'}
+            </h3>
+            <p className="text-xs text-gray-500 text-center mb-5">
+              {itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? (
+                <>Buka semula sekatan siaran <strong>"{itemToBlock.title}"</strong> untuk membolehkan komuniti melihatnya semula.</>
+              ) : (
+                <>Siaran bantuan <strong>"{itemToBlock.title}"</strong> akan disekat dan disembunyikan daripada komuniti.</>
+              )}
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setItemToBlock(null)}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleToggleBlock(itemToBlock)}
+                className={`flex-1 px-4 py-2 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${
+                  itemToBlock.isBlocked || itemToBlock.status === 'Disekat'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {isSubmitting ? 'Memproses...' : (itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? 'Buka Sekatan' : 'Sekat Bantuan')}
+              </button>
+            </div>
           </div>
         </div>
       )}

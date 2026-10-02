@@ -58,6 +58,13 @@ def get_listings(
                         if cond not in ['Baru', 'Seperti Baru', 'Terpakai']:
                             cond = "Terpakai"
 
+                        st = str(d.get("status") or "Aktif").strip()
+                        is_blk = (st.lower() in ["disekat", "blocked"] or d.get("isBlocked") in [True, "true", "True", 1, "1"])
+                        if is_blk:
+                            st = "Disekat"
+                        elif st not in ['Aktif', 'Sold', 'Habis']:
+                            st = "Aktif"
+
                         parsed.append(Listing(
                             id=str(d.get("id") or f"l_{uuid.uuid4().hex[:6]}"),
                             title=str(d.get("title") or "Barangan"),
@@ -71,7 +78,9 @@ def get_listings(
                             sellerName=str(d.get("sellerName") or "Jiran"),
                             sellerPhone=str(d.get("sellerPhone") or ""),
                             sellerContactNotes=str(d.get("sellerContactNotes") or ""),
-                            createdAt=str(d.get("createdAt") or "Baru sahaja")
+                            createdAt=str(d.get("createdAt") or "Baru sahaja"),
+                            status=st,
+                            isBlocked=is_blk
                         ))
                     except Exception as err:
                         print("Row parse err:", err)
@@ -183,3 +192,47 @@ def delete_listing(listing_id: str, background_tasks: BackgroundTasks):
     MARKET_CACHE["data"] = [item for item in MARKET_CACHE["data"] if item.id != listing_id]
     background_tasks.add_task(sync_save_to_gas, {"action": "delete", "sheet": "Listings", "id": listing_id})
     return {"success": True, "message": "Listing deleted successfully"}
+
+@router.put("/{listing_id}/block")
+@router.post("/{listing_id}/block")
+def toggle_block_listing(
+    listing_id: str, 
+    background_tasks: BackgroundTasks, 
+    block: Optional[bool] = Query(None, description="Explicitly set block status true/false")
+):
+    found = False
+    new_is_blocked = True
+    new_status = "Disekat"
+
+    for item in MARKET_CACHE["data"]:
+        if item.id == listing_id:
+            current_blocked = bool(getattr(item, "isBlocked", False) or getattr(item, "status", "") == "Disekat")
+            if block is not None:
+                new_is_blocked = bool(block)
+            else:
+                new_is_blocked = not current_blocked
+            
+            new_status = "Disekat" if new_is_blocked else "Aktif"
+            item.status = new_status
+            item.isBlocked = new_is_blocked
+            found = True
+            break
+
+    if not found:
+        new_is_blocked = True if block is None or block else False
+        new_status = "Disekat" if new_is_blocked else "Aktif"
+
+    background_tasks.add_task(sync_save_to_gas, {
+        "action": "update", 
+        "sheet": "Listings", 
+        "id": listing_id, 
+        "data": {"status": new_status, "isBlocked": new_is_blocked}
+    })
+
+    return {
+        "success": True, 
+        "id": listing_id, 
+        "status": new_status, 
+        "isBlocked": new_is_blocked,
+        "message": f"Iklan telah {'disekat' if new_is_blocked else 'dinyahsekat'}."
+    }

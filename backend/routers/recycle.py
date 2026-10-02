@@ -184,11 +184,14 @@ def get_donations(status: Optional[str] = Query(None, description="Available or 
                     except:
                         dist = 0.5
 
-                    st = d.get("status") or "Available"
-                    if st.capitalize() not in ["Available", "Claimed"]:
-                        st = "Available"
-                    else:
+                    st = str(d.get("status") or "Available").strip()
+                    is_blk = (st.lower() in ["disekat", "blocked"] or d.get("isBlocked") in [True, "true", "True", 1, "1"])
+                    if is_blk:
+                        st = "Disekat"
+                    elif st.capitalize() in ["Available", "Claimed"]:
                         st = st.capitalize()
+                    else:
+                        st = "Available"
 
                     parsed.append(DonationItem(
                         id=str(d.get("id") or f"d_{uuid.uuid4().hex[:6]}"),
@@ -202,6 +205,7 @@ def get_donations(status: Optional[str] = Query(None, description="Available or 
                         donorContactNotes=str(d.get("donorContactNotes") or ""),
                         distance=dist,
                         status=st,
+                        isBlocked=is_blk,
                         claimedBy=d.get("claimedBy") or None,
                         createdAt=str(d.get("createdAt") or "Baru sahaja")
                     ))
@@ -288,4 +292,48 @@ def delete_donation(donation_id: str, background_tasks: BackgroundTasks):
     RECYCLE_CACHE["donations"] = [item for item in RECYCLE_CACHE["donations"] if item.id != donation_id]
     background_tasks.add_task(sync_save_to_gas, {"action": "delete", "sheet": "Donations", "id": donation_id})
     return {"success": True, "message": "Donation item deleted successfully"}
+
+@router.put("/donations/{donation_id}/block")
+@router.post("/donations/{donation_id}/block")
+def toggle_block_donation(
+    donation_id: str, 
+    background_tasks: BackgroundTasks, 
+    block: Optional[bool] = Query(None, description="Explicitly set block status true/false")
+):
+    found = False
+    new_is_blocked = True
+    new_status = "Disekat"
+
+    for item in RECYCLE_CACHE["donations"]:
+        if item.id == donation_id:
+            current_blocked = bool(getattr(item, "isBlocked", False) or getattr(item, "status", "") == "Disekat")
+            if block is not None:
+                new_is_blocked = bool(block)
+            else:
+                new_is_blocked = not current_blocked
+            
+            new_status = "Disekat" if new_is_blocked else "Available"
+            item.status = new_status
+            item.isBlocked = new_is_blocked
+            found = True
+            break
+
+    if not found:
+        new_is_blocked = True if block is None or block else False
+        new_status = "Disekat" if new_is_blocked else "Available"
+
+    background_tasks.add_task(sync_save_to_gas, {
+        "action": "update", 
+        "sheet": "Donations", 
+        "id": donation_id, 
+        "data": {"status": new_status, "isBlocked": new_is_blocked}
+    })
+
+    return {
+        "success": True, 
+        "id": donation_id, 
+        "status": new_status, 
+        "isBlocked": new_is_blocked,
+        "message": f"Barang derma telah {'disekat' if new_is_blocked else 'dinyahsekat'}."
+    }
 

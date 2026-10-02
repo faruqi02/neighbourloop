@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import type { Listing } from '../types';
-import { Trash2, Search, ShoppingBag, Eye, Tag } from 'lucide-react';
+import { Trash2, Search, ShoppingBag, Eye, Tag, Ban, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 export const MarketplacePage = () => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('Semua');
+  const [statusFilter, setStatusFilter] = useState<'Semua' | 'Aktif' | 'Disekat'>('Semua');
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [listingToDelete, setListingToDelete] = useState<Listing | null>(null);
+  const [itemToBlock, setItemToBlock] = useState<Listing | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -98,14 +100,43 @@ export const MarketplacePage = () => {
     }
   };
 
+  const handleToggleBlock = async (item: Listing, explicitBlock?: boolean) => {
+    setIsSubmitting(true);
+    const targetBlocked = explicitBlock !== undefined ? explicitBlock : !(item.isBlocked || item.status === 'Disekat');
+    try {
+      await api.toggleBlockListing(item.id, targetBlocked);
+      showToast(targetBlocked ? 'Iklan berjaya disekat daripada paparan umum!' : 'Sekatan iklan dibuka semula!', 'success');
+      setItemToBlock(null);
+      if (selectedListing && selectedListing.id === item.id) {
+        setSelectedListing({
+          ...selectedListing,
+          status: targetBlocked ? 'Disekat' : 'Aktif',
+          isBlocked: targetBlocked
+        });
+      }
+      fetchListings();
+    } catch (err) {
+      showToast('Gagal mengubah status sekatan iklan', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const filteredListings = listings.filter((item) => {
+    const isItemBlocked = item.isBlocked || item.status === 'Disekat';
+    const matchStatus =
+      statusFilter === 'Semua' ||
+      (statusFilter === 'Disekat' && isItemBlocked) ||
+      (statusFilter === 'Aktif' && !isItemBlocked);
+
     const matchCat = categoryFilter === 'Semua' || item.category === categoryFilter;
     const matchSearch =
       !search ||
       item.title?.toLowerCase().includes(search.toLowerCase()) ||
       item.sellerName?.toLowerCase().includes(search.toLowerCase()) ||
       item.description?.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+
+    return matchStatus && matchCat && matchSearch;
   });
 
   return (
@@ -152,21 +183,44 @@ export const MarketplacePage = () => {
           />
         </div>
 
-        <div className="flex gap-2 items-center flex-wrap">
-          <span className="text-xs font-semibold text-gray-400 uppercase mr-1">Kategori:</span>
-          {['Semua', 'Perabot', 'Elektronik', 'Pakaian', 'Lain-lain'].map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                categoryFilter === cat
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        <div className="flex gap-4 items-center flex-wrap">
+          {/* Status Filter */}
+          <div className="flex gap-1.5 items-center">
+            <span className="text-xs font-semibold text-gray-400 uppercase mr-1">Status:</span>
+            {(['Semua', 'Aktif', 'Disekat'] as const).map((st) => (
+              <button
+                key={st}
+                onClick={() => setStatusFilter(st)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  statusFilter === st
+                    ? st === 'Disekat'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
+
+          {/* Category Filter */}
+          <div className="flex gap-1.5 items-center flex-wrap">
+            <span className="text-xs font-semibold text-gray-400 uppercase mr-1">Kategori:</span>
+            {['Semua', 'Perabot', 'Elektronik', 'Pakaian', 'Lain-lain'].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  categoryFilter === cat
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -181,6 +235,7 @@ export const MarketplacePage = () => {
                 <th className="px-6 py-4 font-semibold">Harga</th>
                 <th className="px-6 py-4 font-semibold">Keadaan</th>
                 <th className="px-6 py-4 font-semibold">Penjual</th>
+                <th className="px-6 py-4 font-semibold">Status</th>
                 <th className="px-6 py-4 font-semibold">Tarikh Disiarkan</th>
                 <th className="px-6 py-4 font-semibold text-right">Tindakan</th>
               </tr>
@@ -188,20 +243,20 @@ export const MarketplacePage = () => {
             <tbody className="divide-y divide-gray-100 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
                     Memuatkan senarai marketplace...
                   </td>
                 </tr>
               ) : filteredListings.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
                     <ShoppingBag className="w-8 h-8 mx-auto text-gray-300 mb-2" />
                     Tiada barangan dijumpai.
                   </td>
                 </tr>
               ) : (
                 filteredListings.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/60 transition-colors">
+                  <tr key={item.id} className={`hover:bg-gray-50/60 transition-colors ${item.isBlocked || item.status === 'Disekat' ? 'bg-rose-50/20' : ''}`}>
                     {/* Item Thumbnail & Title */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -251,6 +306,21 @@ export const MarketplacePage = () => {
                       )}
                     </td>
 
+                    {/* Status Column */}
+                    <td className="px-6 py-4">
+                      {item.isBlocked || item.status === 'Disekat' ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                          <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                          Disekat
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                          Aktif
+                        </span>
+                      )}
+                    </td>
+
                     {/* Date */}
                     <td className="px-6 py-4 text-xs text-gray-500">
                       {item.createdAt || 'Baru sahaja'}
@@ -258,13 +328,28 @@ export const MarketplacePage = () => {
 
                     {/* Action */}
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => setSelectedListing(item)}
                           className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
                           title="Lihat Butiran"
                         >
                           <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setItemToBlock(item)}
+                          className={`p-1.5 rounded-lg transition-colors ${
+                            item.isBlocked || item.status === 'Disekat'
+                              ? 'text-emerald-600 hover:bg-emerald-50'
+                              : 'text-amber-500 hover:text-amber-600 hover:bg-amber-50'
+                          }`}
+                          title={item.isBlocked || item.status === 'Disekat' ? 'Buka Sekatan Iklan' : 'Sekat Iklan Ini (Admin Moderation)'}
+                        >
+                          {item.isBlocked || item.status === 'Disekat' ? (
+                            <ShieldCheck className="w-4 h-4" />
+                          ) : (
+                            <Ban className="w-4 h-4" />
+                          )}
                         </button>
                         <button
                           onClick={() => setListingToDelete(item)}
@@ -452,6 +537,12 @@ export const MarketplacePage = () => {
 
             <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-1.5 text-xs text-gray-600 mb-5">
               <p>
+                <span className="font-semibold text-gray-400">Status:</span>{' '}
+                <span className={`font-bold ${selectedListing.isBlocked || selectedListing.status === 'Disekat' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {selectedListing.isBlocked || selectedListing.status === 'Disekat' ? 'Disekat oleh Admin' : 'Aktif (Dapat Dilihat)'}
+                </span>
+              </p>
+              <p>
                 <span className="font-semibold text-gray-400">Kategori:</span> {selectedListing.category}
               </p>
               <p>
@@ -469,12 +560,83 @@ export const MarketplacePage = () => {
               )}
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleToggleBlock(selectedListing)}
+                disabled={isSubmitting}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                  selectedListing.isBlocked || selectedListing.status === 'Disekat'
+                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                }`}
+              >
+                {selectedListing.isBlocked || selectedListing.status === 'Disekat' ? (
+                  <>
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    Buka Sekatan Iklan
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4 text-rose-600" />
+                    Sekat Iklan (Admin)
+                  </>
+                )}
+              </button>
+
               <button
                 onClick={() => setSelectedListing(null)}
                 className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-colors"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block Confirmation Modal */}
+      {itemToBlock && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl animate-in fade-in zoom-in-95">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+            }`}>
+              {itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? (
+                <ShieldCheck className="w-6 h-6" />
+              ) : (
+                <Ban className="w-6 h-6" />
+              )}
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 text-center mb-1">
+              {itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? 'Buka Sekatan Iklan?' : 'Sekat Iklan Ini?'}
+            </h3>
+            <p className="text-xs text-gray-500 text-center mb-5">
+              {itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? (
+                <>Adakah anda ingin membuka semula sekatan pada iklan <strong>"{itemToBlock.title}"</strong>? Iklan akan kembali boleh dilihat oleh semua pengguna di aplikasi.</>
+              ) : (
+                <>Iklan <strong>"{itemToBlock.title}"</strong> akan disembunyikan daripada carian dan paparan komuniti serta-merta.</>
+              )}
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setItemToBlock(null)}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleToggleBlock(itemToBlock)}
+                className={`flex-1 px-4 py-2 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${
+                  itemToBlock.isBlocked || itemToBlock.status === 'Disekat'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {isSubmitting ? 'Memproses...' : (itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? 'Buka Sekatan' : 'Sekat Iklan')}
               </button>
             </div>
           </div>

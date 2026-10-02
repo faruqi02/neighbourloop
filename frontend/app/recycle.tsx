@@ -479,72 +479,99 @@ export default function RecycleScreen() {
               </Text>
             </View>
 
-            {donations.map((item) => (
-              <View
-                key={item.id}
-                className="bg-white rounded-2xl p-3.5 mb-3 border border-gray-100 shadow-sm flex-row"
-              >
-                <Image source={{ uri: item.imageUrl }} className="w-24 h-24 rounded-xl bg-gray-100 mr-3" />
-                <View className="flex-1 justify-between">
-                  <View>
-                    <View className="flex-row justify-between items-start">
-                      <Text className="text-sm font-bold text-gray-900 flex-1 mr-1" numberOfLines={1}>
-                        {item.title}
-                      </Text>
-                      <View className={`px-2 py-0.5 rounded-full ${item.status === 'Available' ? 'bg-green-100' : 'bg-gray-200'}`}>
-                        <Text className={`text-[10px] font-bold ${item.status === 'Available' ? 'text-green-800' : 'text-gray-600'}`}>
-                          {item.status === 'Available' ? 'Tersedia' : 'Dituntut'}
+            {donations
+              .filter((item) => {
+                const isBlocked = (item as any).isBlocked || (item as any).status === 'Disekat';
+                if (isBlocked && item.donorId !== currentUser?.id) {
+                  return false;
+                }
+                return true;
+              })
+              .map((item) => {
+                const isItemBlocked = (item as any).isBlocked || (item as any).status === 'Disekat';
+                return (
+                  <View
+                    key={item.id}
+                    className="bg-white rounded-2xl p-3.5 mb-3 border border-gray-100 shadow-sm flex-row"
+                  >
+                    <Image source={{ uri: item.imageUrl }} className="w-24 h-24 rounded-xl bg-gray-100 mr-3" />
+                    <View className="flex-1 justify-between">
+                      <View>
+                        <View className="flex-row justify-between items-start">
+                          <Text className="text-sm font-bold text-gray-900 flex-1 mr-1" numberOfLines={1}>
+                            {item.title}
+                          </Text>
+                          <View className={`px-2 py-0.5 rounded-full ${
+                            isItemBlocked
+                              ? 'bg-rose-100 border border-rose-200'
+                              : item.status === 'Available'
+                                ? 'bg-green-100'
+                                : 'bg-gray-200'
+                          }`}>
+                            <Text className={`text-[10px] font-bold ${
+                              isItemBlocked
+                                ? 'text-rose-800'
+                                : item.status === 'Available'
+                                  ? 'text-green-800'
+                                  : 'text-gray-600'
+                            }`}>
+                              {isItemBlocked ? 'Disekat' : item.status === 'Available' ? 'Tersedia' : 'Dituntut'}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text className="text-gray-500 text-xs mt-1" numberOfLines={2}>
+                          {item.description}
                         </Text>
+                        <Text className="text-gray-400 text-[10px] mt-1">
+                          Penderma: {item.donorName} • {item.distance} km
+                        </Text>
+
+                        {item.donorContactNotes ? (
+                          <Text className="text-gray-500 text-[10px] italic mt-0.5">
+                            Nota: {item.donorContactNotes}
+                          </Text>
+                        ) : null}
+                      </View>
+
+                      <View className="flex-row mt-2 space-x-2">
+                        {/* Chat with Donor Button */}
+                        <TouchableOpacity
+                          onPress={() => {
+                            setChatRecipient({
+                              id: item.donorId,
+                              name: item.donorName,
+                              phone: item.donorPhone,
+                              title: item.title,
+                            });
+                            setChatModalVisible(true);
+                          }}
+                          className="bg-purple-50 border border-purple-300 px-3 py-1.5 rounded-xl flex-row items-center mr-2"
+                        >
+                          <MessageCircle size={14} color="#9333ea" />
+                          <Text className="text-purple-800 font-bold text-xs ml-1">Chat</Text>
+                        </TouchableOpacity>
+
+                        {isItemBlocked ? (
+                          <View className="flex-1 py-1.5 items-center bg-rose-50 border border-rose-200 rounded-xl justify-center">
+                            <Text className="text-rose-600 text-[11px] font-bold">Disekat oleh Admin</Text>
+                          </View>
+                        ) : item.status === 'Available' ? (
+                          <TouchableOpacity
+                            onPress={() => handleClaim(item)}
+                            className="flex-1 bg-purple-700 py-1.5 rounded-xl items-center justify-center shadow-xs"
+                          >
+                            <Text className="text-white font-bold text-xs">Tuntut</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <View className="flex-1 py-1.5 items-center bg-gray-100 rounded-xl justify-center">
+                            <Text className="text-gray-400 text-[11px] font-semibold">Dituntut oleh {item.claimedBy}</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
-                    <Text className="text-gray-500 text-xs mt-1" numberOfLines={2}>
-                      {item.description}
-                    </Text>
-                    <Text className="text-gray-400 text-[10px] mt-1">
-                      Penderma: {item.donorName} • {item.distance} km
-                    </Text>
-
-                    {item.donorContactNotes ? (
-                      <Text className="text-gray-500 text-[10px] italic mt-0.5">
-                        Nota: {item.donorContactNotes}
-                      </Text>
-                    ) : null}
                   </View>
-
-                  <View className="flex-row mt-2 space-x-2">
-                    {/* Chat with Donor Button */}
-                    <TouchableOpacity
-                      onPress={() => {
-                        setChatRecipient({
-                          id: item.donorId,
-                          name: item.donorName,
-                          phone: item.donorPhone,
-                          title: item.title,
-                        });
-                        setChatModalVisible(true);
-                      }}
-                      className="bg-purple-50 border border-purple-300 px-3 py-1.5 rounded-xl flex-row items-center mr-2"
-                    >
-                      <MessageCircle size={14} color="#9333ea" />
-                      <Text className="text-purple-800 font-bold text-xs ml-1">Chat</Text>
-                    </TouchableOpacity>
-
-                    {item.status === 'Available' ? (
-                      <TouchableOpacity
-                        onPress={() => handleClaim(item)}
-                        className="flex-1 bg-purple-700 py-1.5 rounded-xl items-center justify-center shadow-xs"
-                      >
-                        <Text className="text-white font-bold text-xs">Tuntut</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View className="flex-1 py-1.5 items-center bg-gray-100 rounded-xl justify-center">
-                        <Text className="text-gray-400 text-[11px] font-semibold">Dituntut oleh {item.claimedBy}</Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-            ))}
+                );
+              })}
 
             <View className="h-28" />
           </ScrollView>

@@ -51,7 +51,10 @@ def get_help_items(
                         t = "Permintaan"
 
                     st = str(d.get("status") or "Open").strip()
-                    if st not in ["Open", "In Progress", "Completed"]:
+                    is_blk = (st.lower() in ["disekat", "blocked"] or d.get("isBlocked") in [True, "true", "True", 1, "1"])
+                    if is_blk:
+                        st = "Disekat"
+                    elif st not in ["Open", "In Progress", "Completed"]:
                         st = "Open"
 
                     cat = str(d.get("category") or "Lain-lain").strip()
@@ -73,6 +76,7 @@ def get_help_items(
                         requesterContactNotes=str(d.get("requesterContactNotes") or ""),
                         imageUrl=d.get("imageUrl") or None,
                         status=st,
+                        isBlocked=is_blk,
                         fulfilledBy=d.get("fulfilledBy") or None,
                         createdAt=str(d.get("createdAt") or "Baru sahaja")
                     ))
@@ -213,3 +217,47 @@ def delete_help(help_id: str, background_tasks: BackgroundTasks):
     HELP_CACHE["data"] = [h for h in HELP_CACHE["data"] if h.id != help_id]
     background_tasks.add_task(sync_save_to_gas, {"action": "delete", "sheet": "HelpRequests", "id": help_id})
     return {"success": True, "message": "Bantuan berjaya dipadam"}
+
+@router.put("/{help_id}/block")
+@router.post("/{help_id}/block")
+def toggle_block_help(
+    help_id: str, 
+    background_tasks: BackgroundTasks, 
+    block: Optional[bool] = Query(None, description="Explicitly set block status true/false")
+):
+    found = False
+    new_is_blocked = True
+    new_status = "Disekat"
+
+    for item in HELP_CACHE["data"]:
+        if item.id == help_id:
+            current_blocked = bool(getattr(item, "isBlocked", False) or getattr(item, "status", "") == "Disekat")
+            if block is not None:
+                new_is_blocked = bool(block)
+            else:
+                new_is_blocked = not current_blocked
+            
+            new_status = "Disekat" if new_is_blocked else "Open"
+            item.status = new_status
+            item.isBlocked = new_is_blocked
+            found = True
+            break
+
+    if not found:
+        new_is_blocked = True if block is None or block else False
+        new_status = "Disekat" if new_is_blocked else "Open"
+
+    background_tasks.add_task(sync_save_to_gas, {
+        "action": "update", 
+        "sheet": "HelpRequests", 
+        "id": help_id, 
+        "data": {"status": new_status, "isBlocked": new_is_blocked}
+    })
+
+    return {
+        "success": True, 
+        "id": help_id, 
+        "status": new_status, 
+        "isBlocked": new_is_blocked,
+        "message": f"Bantuan telah {'disekat' if new_is_blocked else 'dinyahsekat'}."
+    }

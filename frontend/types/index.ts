@@ -28,6 +28,8 @@ export interface Listing {
   sellerPhone?: string;
   sellerContactNotes?: string;
   createdAt: string;
+  status?: 'Aktif' | 'Disekat' | string;
+  isBlocked?: boolean;
 }
 
 export interface RecycleCenter {
@@ -56,7 +58,8 @@ export interface DonationItem {
   donorPhone?: string;
   donorContactNotes?: string;
   distance: number;
-  status: 'Available' | 'Claimed';
+  status: 'Available' | 'Claimed' | 'Disekat' | string;
+  isBlocked?: boolean;
   claimedBy?: string;
   createdAt: string;
 }
@@ -73,7 +76,8 @@ export interface HelpRequest {
   requesterPhone?: string;
   requesterContactNotes?: string;
   imageUrl?: string;
-  status: 'Open' | 'Completed';
+  status: 'Open' | 'Completed' | 'Disekat' | string;
+  isBlocked?: boolean;
   fulfilledBy?: string;
   createdAt: string;
 }
@@ -107,7 +111,7 @@ export interface ChatConversation {
 export interface CommunityNotice {
   id: string;
   title: string;
-  category: 'Gotong-Royong' | 'Penyelenggaraan' | 'Keselamatan' | 'Hebahan' | 'Aktiviti Komuniti';
+  category: 'Gotong-Royong' | 'Penyelenggaraan' | 'Keselamatan' | 'Hebahan' | 'Aktiviti Komuniti' | 'Aktiviti' | 'Umum' | string;
   description: string;
   date: string;
   time?: string;

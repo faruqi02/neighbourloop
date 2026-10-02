@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import type { User } from '../types';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Ban, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 export const UsersPage = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -9,6 +9,7 @@ export const UsersPage = () => {
   const [newUser, setNewUser] = useState({ name: '', username: '', email: '', phone: '', role: 'User', neighborhood: '', password: '' });
   const [editingUser, setEditingUser] = useState<any>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToBlock, setUserToBlock] = useState<User | null>(null);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,6 +25,22 @@ export const UsersPage = () => {
 
   const fetchUsers = () => {
     api.getUsers().then(setUsers);
+  };
+
+  const handleToggleBlockUser = async (u: User) => {
+    if (!u.id) return;
+    setIsSubmitting(true);
+    const targetBlocked = !(u.status === 'Digantung');
+    try {
+      await api.toggleBlockUser(u.id, targetBlocked);
+      showToast(targetBlocked ? `Akaun @${u.username || u.name} telah digantung/disekat!` : `Sekatan akaun @${u.username || u.name} telah dibuka semula!`, 'success');
+      setUserToBlock(null);
+      fetchUsers();
+    } catch (e) {
+      showToast("Gagal mengubah status sekatan pengguna", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAddUser = async (e: React.FormEvent) => {
@@ -139,13 +156,34 @@ export const UsersPage = () => {
                 <td className="px-6 py-4 text-sm text-gray-600">{u.phone}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">{u.location || u.neighborhood}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${u.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                    {u.status}
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${u.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                    {u.status === 'Aktif' ? (
+                      <>
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        Aktif
+                      </>
+                    ) : (
+                      <>
+                        <ShieldAlert className="w-3 h-3 text-rose-600" />
+                        Digantung
+                      </>
+                    )}
                   </span>
                 </td>
-                <td className="px-6 py-4 flex gap-2">
+                <td className="px-6 py-4 flex items-center gap-1.5">
                   <button onClick={() => setEditingUser({...u, newPassword: ''})} className="text-emerald-600 hover:text-emerald-800 p-2 hover:bg-emerald-50 rounded-lg transition-colors" title="Edit">
                     <Pencil size={18} />
+                  </button>
+                  <button 
+                    onClick={() => setUserToBlock(u)} 
+                    className={`p-2 rounded-lg transition-colors ${
+                      u.status === 'Digantung' 
+                        ? 'text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50' 
+                        : 'text-amber-500 hover:text-amber-700 hover:bg-amber-50'
+                    }`} 
+                    title={u.status === 'Digantung' ? 'Buka Sekatan Pengguna' : 'Gantung / Sekat Pengguna Ini'}
+                  >
+                    {u.status === 'Digantung' ? <ShieldCheck size={18} /> : <Ban size={18} />}
                   </button>
                   <button onClick={() => setUserToDelete(u)} className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg transition-colors" title="Padam">
                     <Trash2 size={18} />
@@ -269,6 +307,54 @@ export const UsersPage = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Block Confirmation Modal */}
+      {userToBlock && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl animate-in fade-in zoom-in-95">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              userToBlock.status === 'Digantung' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+            }`}>
+              {userToBlock.status === 'Digantung' ? (
+                <ShieldCheck className="w-6 h-6" />
+              ) : (
+                <Ban className="w-6 h-6" />
+              )}
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 text-center mb-1">
+              {userToBlock.status === 'Digantung' ? 'Buka Sekatan Pengguna?' : 'Gantung / Sekat Pengguna?'}
+            </h3>
+            <p className="text-xs text-gray-500 text-center mb-5">
+              {userToBlock.status === 'Digantung' ? (
+                <>Adakah anda ingin mengaktifkan semula akaun pengguna <strong>"{userToBlock.name}"</strong> (@{userToBlock.username})?</>
+              ) : (
+                <>Pengguna <strong>"{userToBlock.name}"</strong> (@{userToBlock.username}) akan digantung dan disekat daripada melakukan sebarang aktiviti serta-merta.</>
+              )}
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setUserToBlock(null)}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleToggleBlockUser(userToBlock)}
+                className={`flex-1 px-4 py-2 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${
+                  userToBlock.status === 'Digantung'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {isSubmitting ? 'Memproses...' : (userToBlock.status === 'Digantung' ? 'Buka Sekatan' : 'Gantung Pengguna')}
+              </button>
+            </div>
           </div>
         </div>
       )}

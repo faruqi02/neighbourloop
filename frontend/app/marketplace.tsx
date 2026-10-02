@@ -138,6 +138,10 @@ export default function MarketplaceScreen() {
   };
 
   const filteredListings = listings.filter((item) => {
+    const isBlocked = (item as any).isBlocked || (item as any).status === 'Disekat';
+    if (isBlocked && item.sellerId !== currentUser?.id) {
+      return false;
+    }
     const matchCat = selectedCategory === 'Semua' || item.category === selectedCategory;
     const matchSearch = !search || 
       item.title.toLowerCase().includes(search.toLowerCase()) || 
@@ -235,17 +239,19 @@ export default function MarketplaceScreen() {
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
-          keyboardShouldPersistTaps="always"
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexDirection: 'row', alignItems: 'center' }}
           className="mb-1"
         >
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat;
             return (
-              <Pressable
+              <TouchableOpacity
                 key={cat}
                 onPress={() => setSelectedCategory(cat)}
+                activeOpacity={0.7}
                 hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                style={({ pressed }) => ({
+                style={{
                   marginRight: 8,
                   paddingHorizontal: 16,
                   paddingVertical: 7,
@@ -253,10 +259,9 @@ export default function MarketplaceScreen() {
                   borderWidth: 1.5,
                   backgroundColor: isSelected ? '#2563eb' : '#ffffff',
                   borderColor: isSelected ? '#2563eb' : '#e5e7eb',
-                  opacity: pressed ? 0.75 : 1,
                   alignItems: 'center',
                   justifyContent: 'center',
-                })}
+                }}
               >
                 <Text
                   style={{
@@ -267,7 +272,7 @@ export default function MarketplaceScreen() {
                 >
                   {cat}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>
@@ -307,6 +312,15 @@ export default function MarketplaceScreen() {
                     style={{ width: '100%', height: '100%' }}
                     resizeMode="cover"
                   />
+
+                  {/* Blocked Badge (if viewed by author) */}
+                  {((item as any).isBlocked || (item as any).status === 'Disekat') && (
+                    <View className="absolute top-2 left-2 bg-rose-600 px-2 py-0.5 rounded-md shadow-sm z-10">
+                      <Text className="text-[10px] font-black text-white uppercase tracking-tight">
+                        Disekat
+                      </Text>
+                    </View>
+                  )}
 
                   {/* Top-Right Condition Badge */}
                   <View 
@@ -416,6 +430,18 @@ export default function MarketplaceScreen() {
                   source={{ uri: selectedListing.imageUrl }}
                   className="w-full h-48 rounded-2xl mb-4 bg-gray-100"
                 />
+
+                {/* Blocked Warning Banner */}
+                {((selectedListing as any).isBlocked || (selectedListing as any).status === 'Disekat') && (
+                  <View className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl mb-4">
+                    <Text className="text-xs font-bold text-rose-800">
+                      ⚠️ Iklan Ini Disekat oleh Pentadbir
+                    </Text>
+                    <Text className="text-[11px] text-rose-600 mt-1 leading-4">
+                      Iklan jualan ini telah disekat oleh pihak Admin dan tidak dapat dilihat oleh jiran lain di komuniti.
+                    </Text>
+                  </View>
+                )}
 
                 <View className="flex-row justify-between items-center mb-2">
                   <Text className="text-2xl font-black text-green-700">

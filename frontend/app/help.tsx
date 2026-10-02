@@ -142,6 +142,10 @@ export default function HelpScreen() {
   };
 
   const filteredRequests = requests.filter((r) => {
+    const isBlocked = (r as any).isBlocked || (r as any).status === 'Disekat';
+    if (isBlocked && r.requesterId !== currentUser?.id) {
+      return false;
+    }
     const matchType = r.type === activeTab;
     const matchCat = selectedCategory === 'Semua' || r.category === selectedCategory;
     return matchType && matchCat;
@@ -267,17 +271,19 @@ export default function HelpScreen() {
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
-          keyboardShouldPersistTaps="always"
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexDirection: 'row', alignItems: 'center' }}
           className="mb-3 max-h-9"
         >
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat;
             return (
-              <Pressable
+              <TouchableOpacity
                 key={cat}
                 onPress={() => setSelectedCategory(cat)}
+                activeOpacity={0.7}
                 hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                style={({ pressed }) => ({
+                style={{
                   marginRight: 8,
                   paddingHorizontal: 14,
                   paddingVertical: 5,
@@ -285,10 +291,9 @@ export default function HelpScreen() {
                   borderWidth: 1.5,
                   backgroundColor: isSelected ? '#7e22ce' : '#ffffff',
                   borderColor: isSelected ? '#7e22ce' : '#e5e7eb',
-                  opacity: pressed ? 0.75 : 1,
                   alignItems: 'center',
                   justifyContent: 'center',
-                })}
+                }}
               >
                 <Text
                   style={{
@@ -299,7 +304,7 @@ export default function HelpScreen() {
                 >
                   {cat}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>
@@ -326,9 +331,25 @@ export default function HelpScreen() {
                   <View className="bg-purple-50 px-2.5 py-0.5 rounded-md self-start border border-purple-100">
                     <Text className="text-[10px] font-bold text-purple-700">{req.category}</Text>
                   </View>
-                  <View className={`px-2 py-0.5 rounded-full ${req.status === 'Open' ? 'bg-emerald-50' : 'bg-gray-100'}`}>
-                    <Text className={`text-[10px] font-bold ${req.status === 'Open' ? 'text-emerald-700' : 'text-gray-500'}`}>
-                      {req.status === 'Open' ? 'Dibuka' : 'Selesai'}
+                  <View className={`px-2 py-0.5 rounded-full ${
+                    (req as any).isBlocked || (req as any).status === 'Disekat'
+                      ? 'bg-rose-50 border border-rose-200'
+                      : req.status === 'Open'
+                        ? 'bg-emerald-50'
+                        : 'bg-gray-100'
+                  }`}>
+                    <Text className={`text-[10px] font-bold ${
+                      (req as any).isBlocked || (req as any).status === 'Disekat'
+                        ? 'text-rose-700'
+                        : req.status === 'Open'
+                          ? 'text-emerald-700'
+                          : 'text-gray-500'
+                    }`}>
+                      {(req as any).isBlocked || (req as any).status === 'Disekat'
+                        ? 'Disekat'
+                        : req.status === 'Open'
+                          ? 'Dibuka'
+                          : 'Selesai'}
                     </Text>
                   </View>
                 </View>
@@ -418,6 +439,18 @@ export default function HelpScreen() {
                 {selectedRequest.imageUrl ? (
                   <Image source={{ uri: selectedRequest.imageUrl }} className="w-full h-40 rounded-2xl mb-3 bg-gray-100" />
                 ) : null}
+
+                {/* Blocked Warning Banner */}
+                {((selectedRequest as any).isBlocked || (selectedRequest as any).status === 'Disekat') && (
+                  <View className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl mb-3">
+                    <Text className="text-xs font-bold text-rose-800">
+                      ⚠️ Bantuan Ini Disekat oleh Pentadbir
+                    </Text>
+                    <Text className="text-[11px] text-rose-600 mt-1 leading-4">
+                      Hantaran bantuan ini telah disekat oleh pihak Admin dan tidak dapat dilihat oleh jiran lain di komuniti.
+                    </Text>
+                  </View>
+                )}
 
                 <Text className="text-xl font-bold text-gray-900 mb-2">{selectedRequest.title}</Text>
                 <Text className="text-gray-600 text-sm mb-4 leading-5">{selectedRequest.description}</Text>

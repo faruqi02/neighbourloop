@@ -72,6 +72,15 @@ export const api = {
     return res.json();
   },
 
+  toggleBlockUser: async (id: string, block?: boolean): Promise<any> => {
+    const query = block !== undefined ? `?block=${block}` : '';
+    const res = await fetch(`${API_URL}/admin/users/${id}/block${query}`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Network response was not ok');
+    return res.json();
+  },
+
   // --- Marketplace ---
   getListings: async (): Promise<Listing[]> => {
     try {
@@ -103,6 +112,15 @@ export const api = {
     return res.json();
   },
 
+  toggleBlockListing: async (id: string, block?: boolean): Promise<any> => {
+    const query = block !== undefined ? `?block=${block}` : '';
+    const res = await fetch(`${API_URL}/marketplace/${id}/block${query}`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Network response was not ok');
+    return res.json();
+  },
+
   // --- Donate & Recycle ---
   getDonations: async (): Promise<DonationItem[]> => {
     try {
@@ -119,6 +137,15 @@ export const api = {
   deleteDonation: async (id: string): Promise<any> => {
     const res = await fetch(`${API_URL}/recycle/donations/${id}`, {
       method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Network response was not ok');
+    return res.json();
+  },
+
+  toggleBlockDonation: async (id: string, block?: boolean): Promise<any> => {
+    const query = block !== undefined ? `?block=${block}` : '';
+    const res = await fetch(`${API_URL}/recycle/donations/${id}/block${query}`, {
+      method: 'POST'
     });
     if (!res.ok) throw new Error('Network response was not ok');
     return res.json();
@@ -162,6 +189,15 @@ export const api = {
   deleteHelpRequest: async (id: string): Promise<any> => {
     const res = await fetch(`${API_URL}/help/${id}`, {
       method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Network response was not ok');
+    return res.json();
+  },
+
+  toggleBlockHelpRequest: async (id: string, block?: boolean): Promise<any> => {
+    const query = block !== undefined ? `?block=${block}` : '';
+    const res = await fetch(`${API_URL}/help/${id}/block${query}`, {
+      method: 'POST'
     });
     if (!res.ok) throw new Error('Network response was not ok');
     return res.json();

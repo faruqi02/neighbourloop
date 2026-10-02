@@ -58,6 +58,8 @@ class Listing(BaseModel):
     sellerPhone: Optional[str] = None
     sellerContactNotes: Optional[str] = None
     createdAt: str
+    status: Optional[str] = 'Aktif'
+    isBlocked: Optional[bool] = False
 
 class ListingCreate(BaseModel):
     title: str
@@ -95,7 +97,8 @@ class DonationItem(BaseModel):
     donorPhone: Optional[str] = None
     donorContactNotes: Optional[str] = None
     distance: float
-    status: Literal['Available', 'Claimed'] = 'Available'
+    status: str = 'Available'
+    isBlocked: Optional[bool] = False
     claimedBy: Optional[str] = None
     createdAt: str
 
@@ -133,6 +136,7 @@ class HelpRequest(BaseModel):
     requesterContactNotes: Optional[str] = None
     imageUrl: Optional[str] = None
     status: str = 'Open'
+    isBlocked: Optional[bool] = False
     fulfilledBy: Optional[str] = None
     createdAt: str
 

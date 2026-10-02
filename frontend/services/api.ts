@@ -37,7 +37,7 @@ export function getApiBaseUrl(): string {
   }
 
   // 4. Default fallback
-  return 'http://192.168.1.165:8000';
+  return 'http://192.168.0.216:8000';
 }
 
 export async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T | null> {

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/useUserStore';
 import { useNoticeStore } from '../../store/useNoticeStore';
@@ -13,9 +13,10 @@ import {
   Clock, 
   Users, 
   PlusCircle,
-  Megaphone
+  Megaphone,
+  AlertCircle
 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import LocationModal from '../../components/LocationModal';
 import NoticeDetailModal from '../../components/NoticeDetailModal';
 import { CommunityNotice } from '../../types';
@@ -28,9 +29,23 @@ export default function HomeDashboard() {
   const { notices, fetchNotices } = useNoticeStore();
   const router = useRouter();
 
+  const [refreshing, setRefreshing] = useState(false);
+
   useEffect(() => {
     fetchNotices();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotices();
+    }, [])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchNotices();
+    setRefreshing(false);
+  };
 
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<CommunityNotice | null>(null);
@@ -63,7 +78,13 @@ export default function HomeDashboard() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1 px-5 pt-4" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#059669']} />
+        }
+      >
         {/* User Greeting & Tagline */}
         <View className="mb-4">
           <Text className="text-2xl font-black text-gray-900">
@@ -145,74 +166,94 @@ export default function HomeDashboard() {
         </View>
 
         <View className="mb-8">
-          {notices.map((item) => {
-            let catBg = 'bg-emerald-100 text-emerald-800';
-            let catBorder = 'border-emerald-200';
-            let catText = 'text-emerald-800';
+          {notices.length === 0 ? (
+            <View className="bg-gray-50 rounded-2xl p-6 items-center border border-gray-100 shadow-xs">
+              <View className="w-12 h-12 rounded-full bg-emerald-50 items-center justify-center mb-2 border border-emerald-100">
+                <Megaphone size={22} color="#059669" />
+              </View>
+              <Text className="text-gray-800 font-bold text-sm">Tiada Notis Komuniti Buat Masa Ini</Text>
+              <Text className="text-gray-400 text-xs text-center mt-1 max-w-[260px]">
+                Hebahan terkini, gotong-royong, atau penyelenggaraan akan dipaparkan di sini.
+              </Text>
+            </View>
+          ) : (
+            notices.map((item) => {
+              let catBg = 'bg-emerald-50 border-emerald-200';
+              let catText = 'text-emerald-800';
 
-            if (item.category === 'Penyelenggaraan') {
-              catBg = 'bg-amber-100';
-              catBorder = 'border-amber-200';
-              catText = 'text-amber-800';
-            } else if (item.category === 'Keselamatan') {
-              catBg = 'bg-blue-100';
-              catBorder = 'border-blue-200';
-              catText = 'text-blue-800';
-            }
+              if (item.category === 'Penyelenggaraan') {
+                catBg = 'bg-amber-50 border-amber-200';
+                catText = 'text-amber-800';
+              } else if (item.category === 'Keselamatan') {
+                catBg = 'bg-blue-50 border-blue-200';
+                catText = 'text-blue-800';
+              } else if (item.category.includes('Aktiviti')) {
+                catBg = 'bg-purple-50 border-purple-200';
+                catText = 'text-purple-800';
+              }
 
-            return (
-              <TouchableOpacity
-                key={item.id}
-                onPress={() => setSelectedNotice(item)}
-                className="bg-white rounded-2xl p-4 mb-3.5 border border-gray-200 shadow-sm"
-              >
-                <View className="flex-row justify-between items-center mb-2">
-                  <View className={`px-2.5 py-0.5 rounded-md border ${catBg} ${catBorder}`}>
-                    <Text className={`text-[10px] font-bold ${catText}`}>{item.category}</Text>
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => setSelectedNotice(item)}
+                  className="bg-white rounded-2xl p-4 mb-3.5 border border-gray-200 shadow-sm"
+                >
+                  <View className="flex-row justify-between items-center mb-2">
+                    <View className="flex-row items-center gap-2">
+                      <View className={`px-2.5 py-0.5 rounded-md border ${catBg}`}>
+                        <Text className={`text-[10px] font-bold ${catText}`}>{item.category}</Text>
+                      </View>
+                      {item.isImportant ? (
+                        <View className="bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 flex-row items-center">
+                          <AlertCircle size={10} color="#b91c1c" />
+                          <Text className="text-[10px] font-bold text-rose-700 ml-1">Penting</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text className="text-gray-400 text-[11px]">{item.createdAt}</Text>
                   </View>
-                  <Text className="text-gray-400 text-[11px]">{item.createdAt}</Text>
-                </View>
 
-                <Text className="text-base font-bold text-gray-900 mb-1.5 leading-5">
-                  {item.title}
-                </Text>
-
-                <Text className="text-gray-600 text-xs mb-3 leading-4" numberOfLines={2}>
-                  {item.description}
-                </Text>
-
-                <View className="bg-gray-50 rounded-xl p-2.5 border border-gray-100">
-                  <View className="flex-row items-center mb-1">
-                    <Calendar size={13} color="#059669" />
-                    <Text className="text-[11px] font-semibold text-gray-700 ml-1.5">{item.date}</Text>
-                    {item.time ? (
-                      <>
-                        <Text className="text-gray-300 mx-1.5">•</Text>
-                        <Clock size={13} color="#059669" />
-                        <Text className="text-[11px] font-semibold text-gray-700 ml-1.5">{item.time}</Text>
-                      </>
-                    ) : null}
-                  </View>
-                  <View className="flex-row items-center">
-                    <MapPin size={13} color="#dc2626" />
-                    <Text className="text-[11px] text-gray-600 ml-1.5 font-medium" numberOfLines={1}>
-                      {item.location}
-                    </Text>
-                  </View>
-                </View>
-
-                <View className="flex-row justify-between items-center mt-3 pt-2.5 border-t border-gray-100">
-                  <Text className="text-[11px] text-gray-500 font-medium">
-                    Oleh: <Text className="text-gray-800 font-semibold">{item.organizer}</Text>
+                  <Text className="text-base font-bold text-gray-900 mb-1.5 leading-5">
+                    {item.title}
                   </Text>
-                  <View className="flex-row items-center">
-                    <Text className="text-xs font-bold text-emerald-700 mr-0.5">Lihat Butiran</Text>
-                    <ChevronRight size={14} color="#047857" />
+
+                  <Text className="text-gray-600 text-xs mb-3 leading-4" numberOfLines={2}>
+                    {item.description}
+                  </Text>
+
+                  <View className="bg-gray-50 rounded-xl p-2.5 border border-gray-100">
+                    <View className="flex-row items-center mb-1">
+                      <Calendar size={13} color="#059669" />
+                      <Text className="text-[11px] font-semibold text-gray-700 ml-1.5">{item.date}</Text>
+                      {item.time ? (
+                        <>
+                          <Text className="text-gray-300 mx-1.5">•</Text>
+                          <Clock size={13} color="#059669" />
+                          <Text className="text-[11px] font-semibold text-gray-700 ml-1.5">{item.time}</Text>
+                        </>
+                      ) : null}
+                    </View>
+                    <View className="flex-row items-center">
+                      <MapPin size={13} color="#dc2626" />
+                      <Text className="text-[11px] text-gray-600 ml-1.5 font-medium" numberOfLines={1}>
+                        {item.location}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+
+                  <View className="flex-row justify-between items-center mt-3 pt-2.5 border-t border-gray-100">
+                    <Text className="text-[11px] text-gray-500 font-medium">
+                      Oleh: <Text className="text-gray-800 font-semibold">{item.organizer}</Text>
+                    </Text>
+                    <View className="flex-row items-center">
+                      <Text className="text-xs font-bold text-emerald-700 mr-0.5">Lihat Butiran</Text>
+                      <ChevronRight size={14} color="#047857" />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
         </View>
 
         <View className="h-10" />

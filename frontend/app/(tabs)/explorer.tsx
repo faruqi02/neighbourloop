@@ -182,10 +182,18 @@ export default function ExplorerScreen() {
 
     const combined = [...marketItems, ...donationItems, ...helpItems];
 
-    // Sort strictly from nearest with user to the most far
-    combined.sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999));
+    // Filter out blocked items unless the current user is the author
+    const visibleCombined = combined.filter((item: any) => {
+      const isBlocked = item.isBlocked || item.status === 'Disekat';
+      if (!isBlocked) return true;
+      const ownerId = item.sellerId || item.donorId || item.requesterId;
+      return currentUser && ownerId && currentUser.id === ownerId;
+    });
 
-    return combined;
+    // Sort strictly from nearest with user to the most far
+    visibleCombined.sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999));
+
+    return visibleCombined;
   }, [listings, donations, helpRequests, currentUser, allUsers]);
 
   // Filtered items based on search and category
@@ -312,17 +320,18 @@ export default function ExplorerScreen() {
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
-          keyboardShouldPersistTaps="always"
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}
         >
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat;
             return (
-              <Pressable
+              <TouchableOpacity
                 key={cat}
                 onPress={() => setSelectedCategory(cat)}
+                activeOpacity={0.7}
                 hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                style={({ pressed }) => ({
+                style={{
                   marginRight: 8,
                   paddingHorizontal: 15,
                   paddingVertical: 7,
@@ -330,10 +339,9 @@ export default function ExplorerScreen() {
                   borderWidth: 1.5,
                   backgroundColor: isSelected ? '#059669' : '#f8fafc',
                   borderColor: isSelected ? '#059669' : '#e2e8f0',
-                  opacity: pressed ? 0.75 : 1,
                   alignItems: 'center',
                   justifyContent: 'center',
-                })}
+                }}
               >
                 <Text
                   style={{
@@ -344,7 +352,7 @@ export default function ExplorerScreen() {
                 >
                   {cat}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>
@@ -415,6 +423,15 @@ export default function ExplorerScreen() {
                     style={{ width: '100%', height: '100%' }}
                     resizeMode="cover"
                   />
+
+                  {/* Blocked Badge (if viewed by author) */}
+                  {(item.isBlocked || item.status === 'Disekat') && (
+                    <View className="absolute top-2 left-2 bg-rose-600 px-2 py-0.5 rounded-md shadow-sm z-10">
+                      <Text className="text-[10px] font-black text-white uppercase tracking-tight">
+                        Disekat
+                      </Text>
+                    </View>
+                  )}
 
                   {/* Top-Right Badge (Condition or Free or Help) */}
                   <View 
@@ -570,6 +587,18 @@ export default function ExplorerScreen() {
                   className="w-full h-56 rounded-2xl mb-4 bg-slate-100"
                   resizeMode="cover"
                 />
+
+                {/* Blocked Warning Banner */}
+                {(selectedItem.isBlocked || selectedItem.status === 'Disekat') && (
+                  <View className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl mb-4">
+                    <Text className="text-xs font-bold text-rose-800">
+                      ⚠️ Hantaran Ini Disekat oleh Pentadbir
+                    </Text>
+                    <Text className="text-[11px] text-rose-600 mt-1 leading-4">
+                      Hantaran ini tidak dipaparkan kepada pengguna umum NeighbourLoop kerana telah disekat oleh pihak Admin.
+                    </Text>
+                  </View>
+                )}
 
                 {/* Price & Condition Row */}
                 <View className="flex-row justify-between items-center mb-2">

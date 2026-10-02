@@ -28,6 +28,8 @@ export interface Listing {
   sellerContactNotes?: string;
   distance?: number;
   createdAt?: string;
+  status?: 'Aktif' | 'Disekat' | string;
+  isBlocked?: boolean;
 }
 
 export interface DonationItem {
@@ -41,7 +43,9 @@ export interface DonationItem {
   donorPhone?: string;
   donorContactNotes?: string;
   distance?: number;
-  status: 'Available' | 'Claimed' | string;
+  location?: string;
+  status: 'Available' | 'Claimed' | 'Disekat' | string;
+  isBlocked?: boolean;
   claimedBy?: string;
   createdAt?: string;
 }
@@ -69,7 +73,8 @@ export interface HelpRequest {
   requesterPhone?: string;
   requesterContactNotes?: string;
   imageUrl?: string;
-  status: 'Open' | 'Completed' | string;
+  status: 'Open' | 'Completed' | 'Disekat' | string;
+  isBlocked?: boolean;
   fulfilledBy?: string;
   createdAt?: string;
 }

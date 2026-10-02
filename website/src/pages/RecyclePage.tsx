@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import type { DonationItem, RecycleCenter } from '../types';
-import { Trash2, Search, HeartHandshake, Building2, MapPin, Phone, Tag } from 'lucide-react';
+import { Trash2, Search, HeartHandshake, Building2, MapPin, Phone, Tag, Eye, Ban, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 export const RecyclePage = () => {
   const [activeTab, setActiveTab] = useState<'donations' | 'centers'>('donations');
@@ -9,10 +9,12 @@ export const RecyclePage = () => {
   const [centers, setCenters] = useState<RecycleCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Semua');
+  const [statusFilter, setStatusFilter] = useState<'Semua' | 'Available' | 'Claimed' | 'Disekat'>('Semua');
 
-  // Delete Donation
+  // Modals & Moderation
+  const [selectedDonation, setSelectedDonation] = useState<DonationItem | null>(null);
   const [itemToDelete, setItemToDelete] = useState<DonationItem | null>(null);
+  const [itemToBlock, setItemToBlock] = useState<DonationItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -57,8 +59,36 @@ export const RecyclePage = () => {
     }
   };
 
+  const handleToggleBlock = async (item: DonationItem, explicitBlock?: boolean) => {
+    setIsSubmitting(true);
+    const targetBlocked = explicitBlock !== undefined ? explicitBlock : !(item.isBlocked || item.status === 'Disekat');
+    try {
+      await api.toggleBlockDonation(item.id, targetBlocked);
+      showToast(targetBlocked ? 'Barang derma berjaya disekat daripada paparan umum!' : 'Sekatan barang derma dibuka semula!', 'success');
+      setItemToBlock(null);
+      if (selectedDonation && selectedDonation.id === item.id) {
+        setSelectedDonation({
+          ...selectedDonation,
+          status: targetBlocked ? 'Disekat' : 'Available',
+          isBlocked: targetBlocked
+        });
+      }
+      fetchData();
+    } catch (err) {
+      showToast('Gagal mengubah status sekatan barangan derma', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const filteredDonations = donations.filter((item) => {
-    const matchStatus = statusFilter === 'Semua' || item.status === statusFilter;
+    const isItemBlocked = item.isBlocked || item.status === 'Disekat';
+    const matchStatus =
+      statusFilter === 'Semua' ||
+      (statusFilter === 'Disekat' && isItemBlocked) ||
+      (statusFilter === 'Available' && !isItemBlocked && item.status !== 'Claimed') ||
+      (statusFilter === 'Claimed' && !isItemBlocked && item.status === 'Claimed');
+
     const matchSearch =
       !search ||
       item.title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -149,17 +179,19 @@ export const RecyclePage = () => {
         {activeTab === 'donations' && (
           <div className="flex gap-2 items-center flex-wrap">
             <span className="text-xs font-semibold text-gray-400 uppercase mr-1">Status:</span>
-            {['Semua', 'Available', 'Claimed'].map((st) => (
+            {(['Semua', 'Available', 'Claimed', 'Disekat'] as const).map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   statusFilter === st
-                    ? 'bg-emerald-600 text-white shadow-xs'
+                    ? st === 'Disekat'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-emerald-600 text-white shadow-xs'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                {st === 'Available' ? 'Belum Diambil' : st === 'Claimed' ? 'Telah Diambil' : 'Semua'}
+                {st === 'Available' ? 'Tersedia' : st === 'Claimed' ? 'Telah Diambil' : st === 'Disekat' ? 'Disekat' : 'Semua'}
               </button>
             ))}
           </div>
@@ -236,12 +268,18 @@ export const RecyclePage = () => {
 
                       {/* Status */}
                       <td className="px-6 py-4">
-                        {item.status === 'Claimed' ? (
+                        {item.isBlocked || item.status === 'Disekat' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                            Disekat
+                          </span>
+                        ) : item.status === 'Claimed' ? (
                           <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
                             Telah Dituntut {item.claimedBy ? `(${item.claimedBy})` : ''}
                           </span>
                         ) : (
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                             Tersedia (Percuma)
                           </span>
                         )}
@@ -254,13 +292,37 @@ export const RecyclePage = () => {
 
                       {/* Action */}
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => setItemToDelete(item)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                          title="Padam Barang Derma"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setSelectedDonation(item)}
+                            className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
+                            title="Lihat Butiran"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setItemToBlock(item)}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              item.isBlocked || item.status === 'Disekat'
+                                ? 'text-emerald-600 hover:bg-emerald-50'
+                                : 'text-amber-500 hover:text-amber-600 hover:bg-amber-50'
+                            }`}
+                            title={item.isBlocked || item.status === 'Disekat' ? 'Buka Sekatan Derma' : 'Sekat Derma Ini (Admin Moderation)'}
+                          >
+                            {item.isBlocked || item.status === 'Disekat' ? (
+                              <ShieldCheck className="w-4 h-4" />
+                            ) : (
+                              <Ban className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => setItemToDelete(item)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                            title="Padam Barang Derma"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -346,6 +408,142 @@ export const RecyclePage = () => {
           </div>
         )}
       </div>
+
+      {/* View Donation Details Modal */}
+      {selectedDonation && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl animate-in fade-in zoom-in-95">
+            <div className="relative mb-4">
+              <img
+                src={selectedDonation.imageUrl || 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=400'}
+                alt={selectedDonation.title}
+                className="w-full h-48 rounded-xl object-cover bg-gray-100"
+              />
+              <span className="absolute top-2 right-2 bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded shadow">
+                Percuma
+              </span>
+            </div>
+
+            <div className="flex justify-between items-baseline mb-2">
+              <h2 className="text-xl font-bold text-gray-900">{selectedDonation.title}</h2>
+              <span className="text-sm font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+                {selectedDonation.category}
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+              {selectedDonation.description || 'Tiada keterangan lanjut.'}
+            </p>
+
+            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 space-y-1.5 text-xs text-gray-600 mb-5">
+              <p>
+                <span className="font-semibold text-gray-400">Status:</span>{' '}
+                <span className={`font-bold ${selectedDonation.isBlocked || selectedDonation.status === 'Disekat' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {selectedDonation.isBlocked || selectedDonation.status === 'Disekat' ? 'Disekat oleh Admin' : selectedDonation.status === 'Claimed' ? 'Telah Dituntut' : 'Tersedia (Boleh Dilihat)'}
+                </span>
+              </p>
+              <p>
+                <span className="font-semibold text-gray-400">Penderma:</span> @{selectedDonation.donorName || 'Penderma'}
+              </p>
+              {selectedDonation.donorPhone && (
+                <p>
+                  <span className="font-semibold text-gray-400">No. Telefon:</span> {selectedDonation.donorPhone}
+                </p>
+              )}
+              {selectedDonation.location && (
+                <p>
+                  <span className="font-semibold text-gray-400">Lokasi:</span> {selectedDonation.location}
+                </p>
+              )}
+              {selectedDonation.claimedBy && (
+                <p>
+                  <span className="font-semibold text-gray-400">Dituntut Oleh:</span> {selectedDonation.claimedBy}
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleToggleBlock(selectedDonation)}
+                disabled={isSubmitting}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+                  selectedDonation.isBlocked || selectedDonation.status === 'Disekat'
+                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                }`}
+              >
+                {selectedDonation.isBlocked || selectedDonation.status === 'Disekat' ? (
+                  <>
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    Buka Sekatan Derma
+                  </>
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4 text-rose-600" />
+                    Sekat Derma (Admin)
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => setSelectedDonation(null)}
+                className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block Confirmation Modal */}
+      {itemToBlock && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl animate-in fade-in zoom-in-95">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+            }`}>
+              {itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? (
+                <ShieldCheck className="w-6 h-6" />
+              ) : (
+                <Ban className="w-6 h-6" />
+              )}
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 text-center mb-1">
+              {itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? 'Buka Sekatan Derma?' : 'Sekat Barangan Derma?'}
+            </h3>
+            <p className="text-xs text-gray-500 text-center mb-5">
+              {itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? (
+                <>Adakah anda ingin membuka semula sekatan pada barangan derma <strong>"{itemToBlock.title}"</strong>? Barangan akan kembali boleh dilihat oleh semua pengguna di aplikasi.</>
+              ) : (
+                <>Barangan derma <strong>"{itemToBlock.title}"</strong> akan disembunyikan daripada carian dan paparan komuniti serta-merta.</>
+              )}
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setItemToBlock(null)}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleToggleBlock(itemToBlock)}
+                className={`flex-1 px-4 py-2 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${
+                  itemToBlock.isBlocked || itemToBlock.status === 'Disekat'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {isSubmitting ? 'Memproses...' : (itemToBlock.isBlocked || itemToBlock.status === 'Disekat' ? 'Buka Sekatan' : 'Sekat Barangan')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {itemToDelete && (

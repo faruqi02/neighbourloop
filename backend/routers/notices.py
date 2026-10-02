@@ -13,13 +13,52 @@ NOTICES_CACHE = {
     "data": [],
     "last_fetched": 0
 }
-CACHE_TTL = 60.0
+CACHE_TTL = 5.0  # 5 seconds fast cache
 
 def sync_save_to_gas(payload: dict):
     try:
-        requests.post(APPS_SCRIPT_URL, json=payload, timeout=60.0)
+        res = requests.post(APPS_SCRIPT_URL, json=payload, timeout=60.0)
+        print("GAS notice sync response:", res.status_code, res.text[:200])
     except Exception as e:
         print("Error saving notice to GAS:", e)
+
+def format_gas_date(val: str) -> str:
+    if not val:
+        return "Hari Ini"
+    val = str(val).strip()
+    if "T" in val and len(val) >= 10:
+        return val.split("T")[0]
+    return val
+
+def format_gas_time(val: str) -> str:
+    if not val:
+        return ""
+    val = str(val).strip()
+    if "T" in val:
+        try:
+            part = val.split("T")[1].split(".")[0]
+            parts = part.split(":")
+            if len(parts) >= 2:
+                hh, mm = int(parts[0]), int(parts[1])
+                ampm = "AM" if hh < 12 else "PM"
+                h12 = hh if 1 <= hh <= 12 else (hh - 12 if hh > 12 else 12)
+                return f"{h12:02d}:{mm:02d} {ampm}"
+        except Exception:
+            return val.split("T")[1].split(".")[0]
+    return val
+
+def format_gas_created(val: str) -> str:
+    if not val:
+        return "Baru sahaja"
+    val = str(val).strip()
+    if "T" in val:
+        try:
+            d_part = val.split("T")[0]
+            t_part = val.split("T")[1][:5]
+            return f"{d_part} {t_part}"
+        except Exception:
+            return val
+    return val
 
 @router.get("", response_model=List[CommunityNotice])
 def get_community_notices(category: Optional[str] = Query(None, description="Category filter")):
@@ -45,14 +84,14 @@ def get_community_notices(category: Optional[str] = Query(None, description="Cat
                         title=str(d.get("title") or "Notis Komuniti"),
                         category=cat,
                         description=str(d.get("description") or ""),
-                        date=str(d.get("date") or "Hari Ini"),
-                        time=str(d.get("time") or ""),
+                        date=format_gas_date(d.get("date")),
+                        time=format_gas_time(d.get("time")),
                         location=str(d.get("location") or ""),
                         organizer=str(d.get("organizer") or "Persatuan Penduduk"),
                         contactPerson=str(d.get("contactPerson") or ""),
                         isImportant=is_imp,
                         imageUrl=d.get("imageUrl") or None,
-                        createdAt=str(d.get("createdAt") or "Baru sahaja")
+                        createdAt=format_gas_created(d.get("createdAt"))
                     ))
                 NOTICES_CACHE["data"] = parsed
                 NOTICES_CACHE["last_fetched"] = now
@@ -100,7 +139,7 @@ def create_community_notice(data: CommunityNoticeCreate, background_tasks: Backg
     )
 
     NOTICES_CACHE["data"].insert(0, new_notice)
-    background_tasks.add_task(sync_save_to_gas, {"sheet": "CommunityNotices", "data": row_data})
+    background_tasks.add_task(sync_save_to_gas, {"action": "create", "sheet": "CommunityNotices", "data": row_data})
 
     return new_notice
 

@@ -4,6 +4,7 @@ import {
   Text, 
   ScrollView, 
   TouchableOpacity, 
+  Pressable,
   TextInput, 
   Modal, 
   Image, 
@@ -44,14 +45,11 @@ export default function HelpScreen() {
   const { requests, addRequest, fulfillRequest, deleteRequest, fetchHelpRequests, loading } = useHelpStore();
   const { currentUser, allUsers, fetchUsers } = useUserStore();
   const router = useRouter();
-  const navigation = useNavigation();
 
   useEffect(() => {
     fetchHelpRequests();
     fetchUsers?.();
   }, []);
-
-  if (!currentUser) return null;
 
   const [activeTab, setActiveTab] = useState<'Permintaan' | 'Tawaran'>('Permintaan');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
@@ -66,7 +64,7 @@ export default function HelpScreen() {
   const [selectedImage, setSelectedImage] = useState('');
   const [selectedImageBase64, setSelectedImageBase64] = useState<string | undefined>(undefined);
   const [isUploading, setIsUploading] = useState(false);
-  const [requesterPhone, setRequesterPhone] = useState(currentUser.phone || '');
+  const [requesterPhone, setRequesterPhone] = useState(currentUser?.phone || '');
   const [requesterNotes, setRequesterNotes] = useState('');
 
   // Helper to ensure URI is converted to Base64 data URL
@@ -150,6 +148,7 @@ export default function HelpScreen() {
   });
 
   const handleCreateRequest = async () => {
+    if (!currentUser) return;
     if (!title.trim()) {
       alert('Sila masukkan tajuk bantuan.');
       return;
@@ -195,6 +194,7 @@ export default function HelpScreen() {
   };
 
   const handleFulfillHelp = (req: HelpRequest) => {
+    if (!currentUser) return;
     fulfillRequest(req.id, currentUser.name);
     setSelectedRequest(null);
     setSuccessTitle('Terima Kasih!');
@@ -211,13 +211,15 @@ export default function HelpScreen() {
     });
   };
 
+  if (!currentUser) return null;
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
       <View className="px-5 pt-3 pb-6 bg-purple-600">
         <View className="flex-row items-center justify-center relative">
           <TouchableOpacity 
-            onPress={() => navigation.goBack()} 
+            onPress={() => router.back()} 
             className="absolute left-0 p-2 z-10"
           >
             <ChevronLeft size={24} color="#ffffff" />
@@ -262,30 +264,52 @@ export default function HelpScreen() {
         </View>
 
         {/* Category Filter Horizontal Scroll */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 max-h-8">
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              onPress={() => setSelectedCategory(cat)}
-              className={`mr-2 px-3.5 py-1 rounded-full border ${
-                selectedCategory === cat
-                  ? 'bg-purple-700 border-purple-700'
-                  : 'bg-white border-gray-200'
-              }`}
-            >
-              <Text
-                className={`text-[11px] font-bold ${
-                  selectedCategory === cat ? 'text-white' : 'text-gray-600'
-                }`}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          keyboardShouldPersistTaps="always"
+          className="mb-3 max-h-9"
+        >
+          {CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                style={({ pressed }) => ({
+                  marginRight: 8,
+                  paddingHorizontal: 14,
+                  paddingVertical: 5,
+                  borderRadius: 9999,
+                  borderWidth: 1.5,
+                  backgroundColor: isSelected ? '#7e22ce' : '#ffffff',
+                  borderColor: isSelected ? '#7e22ce' : '#e5e7eb',
+                  opacity: pressed ? 0.75 : 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                })}
               >
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: isSelected ? '700' : '600',
+                    color: isSelected ? '#ffffff' : '#4b5563',
+                  }}
+                >
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
 
         {/* Help Requests Stream */}
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          className="flex-1" 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {filteredRequests.length === 0 ? (
             <View className="items-center justify-center py-16">
               <Tag size={40} color="#9ca3af" />

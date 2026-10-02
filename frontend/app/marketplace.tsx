@@ -6,6 +6,7 @@ import {
   ScrollView, 
   Image, 
   TouchableOpacity, 
+  Pressable,
   Modal,
   Linking,
   ActivityIndicator,
@@ -35,14 +36,11 @@ export default function MarketplaceScreen() {
   const { listings, addListing, deleteListing, fetchListings, loading } = useMarketStore();
   const { currentUser, allUsers, fetchUsers } = useUserStore();
   const router = useRouter();
-  const navigation = useNavigation();
 
   useEffect(() => {
     fetchListings();
     fetchUsers?.();
   }, []);
-
-  if (!currentUser) return null;
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
@@ -61,7 +59,7 @@ export default function MarketplaceScreen() {
   const [selectedImage, setSelectedImage] = useState(PRESET_IMAGES[0]);
   const [selectedImageBase64, setSelectedImageBase64] = useState<string | undefined>(undefined);
   const [isUploading, setIsUploading] = useState(false);
-  const [sellerPhone, setSellerPhone] = useState(currentUser.phone || '');
+  const [sellerPhone, setSellerPhone] = useState(currentUser?.phone || '');
   const [sellerContactNotes, setSellerContactNotes] = useState('');
 
   // Success Feedback
@@ -148,6 +146,7 @@ export default function MarketplaceScreen() {
   });
 
   const handleCreateListing = async () => {
+    if (!currentUser) return;
     if (!title.trim() || !price) {
       alert('Sila masukkan tajuk dan harga barang.');
       return;
@@ -202,12 +201,14 @@ export default function MarketplaceScreen() {
     });
   };
 
+  if (!currentUser) return null;
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
       <View className="px-5 pt-3 pb-2 border-b border-gray-100">
         <View className="flex-row items-center mb-3">
-          <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 p-1.5 -ml-1 bg-gray-100 rounded-full">
+          <TouchableOpacity onPress={() => router.back()} className="mr-3 p-1.5 -ml-1 bg-gray-100 rounded-full">
             <ChevronLeft size={24} color="#111827" />
           </TouchableOpacity>
           <Text className="text-2xl font-black text-gray-900">Marketplace Jiran</Text>
@@ -231,31 +232,53 @@ export default function MarketplaceScreen() {
         </View>
 
         {/* Categories Bar */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-1">
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              onPress={() => setSelectedCategory(cat)}
-              className={`mr-2 px-4 py-1.5 rounded-full border ${
-                selectedCategory === cat
-                  ? 'bg-blue-600 border-blue-600'
-                  : 'bg-white border-gray-200'
-              }`}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  selectedCategory === cat ? 'text-white' : 'text-gray-600'
-                }`}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          keyboardShouldPersistTaps="always"
+          className="mb-1"
+        >
+          {CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => setSelectedCategory(cat)}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                style={({ pressed }) => ({
+                  marginRight: 8,
+                  paddingHorizontal: 16,
+                  paddingVertical: 7,
+                  borderRadius: 9999,
+                  borderWidth: 1.5,
+                  backgroundColor: isSelected ? '#2563eb' : '#ffffff',
+                  borderColor: isSelected ? '#2563eb' : '#e5e7eb',
+                  opacity: pressed ? 0.75 : 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                })}
               >
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: isSelected ? '700' : '600',
+                    color: isSelected ? '#ffffff' : '#4b5563',
+                  }}
+                >
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
       </View>
 
       {/* Listings Stream */}
-      <ScrollView className="px-5 flex-1 pt-3" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="px-5 flex-1 pt-3" 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {loading && listings.length === 0 ? (
           <View className="items-center justify-center py-16">
             <ActivityIndicator size="large" color="#2563eb" />

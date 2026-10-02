@@ -56,13 +56,10 @@ export default function RecycleScreen() {
   const { centers, donations, addDonation, claimDonation, getSmartRecommendation, fetchRecycleData, loading } = useRecycleStore();
   const { currentUser } = useUserStore();
   const router = useRouter();
-  const navigation = useNavigation();
 
   useEffect(() => {
     fetchRecycleData();
   }, []);
-
-  if (!currentUser) return null;
 
   const [activeSubTab, setActiveSubTab] = useState<'SmartEngine' | 'Directory' | 'ClaimFeed'>('SmartEngine');
 
@@ -84,7 +81,7 @@ export default function RecycleScreen() {
   const [donationDesc, setDonationDesc] = useState('');
   const [donationCat, setDonationCat] = useState(RECYCLE_CATEGORIES[0]);
   const [donationImage, setDonationImage] = useState('https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400');
-  const [donorPhone, setDonorPhone] = useState(currentUser.phone || '');
+  const [donorPhone, setDonorPhone] = useState(currentUser?.phone || '');
   const [donorNotes, setDonorNotes] = useState('');
 
   // Success Feedback Modal
@@ -118,6 +115,7 @@ export default function RecycleScreen() {
   };
 
   const handleClaim = (donation: DonationItem) => {
+    if (!currentUser) return;
     claimDonation(donation.id, currentUser.name);
     setSuccessTitle('Tuntutan Berjaya!');
     setSuccessMsg(`Anda telah menuntut "${donation.title}". Sila hubungi penderma (${donation.donorName}) untuk tetapkan masa pengambilan.`);
@@ -125,6 +123,7 @@ export default function RecycleScreen() {
   };
 
   const handleCreateDonation = () => {
+    if (!currentUser) return;
     if (!donationTitle.trim()) {
       alert('Sila masukkan tajuk barangan derma.');
       return;
@@ -163,13 +162,15 @@ export default function RecycleScreen() {
     return c.type === centerTypeFilter;
   });
 
+  if (!currentUser) return null;
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header with Custom Recycle Icon */}
       <View className="px-5 pt-3 pb-3 bg-green-700">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1 pr-2">
-            <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 p-1.5 -ml-1 bg-green-800/50 rounded-full">
+            <TouchableOpacity onPress={() => router.back()} className="mr-3 p-1.5 -ml-1 bg-green-800/50 rounded-full">
               <ChevronLeft size={24} color="#ffffff" />
             </TouchableOpacity>
             <View className="flex-1">

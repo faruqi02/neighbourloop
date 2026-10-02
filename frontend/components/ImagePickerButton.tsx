@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, Image, ScrollView, Alert, Platform } from 'react-native';
 import { Camera, Image as ImageIcon, X, Sparkles } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -128,17 +128,25 @@ export default function ImagePickerButton({
       {/* Preset Quick Select Options */}
       <Text className="text-[11px] font-semibold text-gray-400 mb-1.5">Atau pilih contoh gambar:</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {presetImages.map((img, i) => (
-          <TouchableOpacity
-            key={i}
-            onPress={() => onImageSelected(img)}
-            className={`mr-2.5 rounded-xl border-2 overflow-hidden ${
-              selectedImageUri === img ? 'border-green-600 shadow' : 'border-transparent'
-            }`}
-          >
-            <Image source={{ uri: img }} className="w-14 h-14 rounded-lg bg-gray-100" />
-          </TouchableOpacity>
-        ))}
+        {presetImages.map((img, i) => {
+          const isSelected = selectedImageUri === img;
+          return (
+            <Pressable
+              key={i}
+              onPress={() => onImageSelected(img)}
+              style={({ pressed }) => ({
+                marginRight: 10,
+                borderRadius: 14,
+                borderWidth: 2.5,
+                borderColor: isSelected ? '#16a34a' : 'transparent',
+                overflow: 'hidden',
+                opacity: pressed ? 0.75 : 1,
+              })}
+            >
+              <Image source={{ uri: img }} style={{ width: 56, height: 56, borderRadius: 10, backgroundColor: '#f3f4f6' }} />
+            </Pressable>
+          );
+        })}
       </ScrollView>
     </View>
   );

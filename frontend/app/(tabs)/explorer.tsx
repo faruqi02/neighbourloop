@@ -4,6 +4,7 @@ import {
   Text, 
   ScrollView, 
   TouchableOpacity, 
+  Pressable,
   Image, 
   TextInput, 
   Modal, 
@@ -194,11 +195,21 @@ export default function ExplorerScreen() {
       if (selectedCategory === 'Marketplace') {
         if (item.itemType !== 'marketplace') return false;
       } else if (selectedCategory === 'Help Nearby') {
-        if (!item.isHelp) return false;
+        if (!item.isHelp && item.itemType !== 'help') return false;
       } else if (selectedCategory === 'Barang Percuma') {
-        if (!item.isDonation) return false;
+        if (!item.isDonation && item.itemType !== 'recycle') return false;
       } else if (selectedCategory !== 'Semua') {
-        if (item.category !== selectedCategory) return false;
+        const itemCat = (item.category || '').toLowerCase().trim();
+        const selCat = selectedCategory.toLowerCase().trim();
+        const matches = 
+          itemCat === selCat || 
+          itemCat.includes(selCat) || 
+          selCat.includes(itemCat) ||
+          (selCat === 'perabot' && itemCat.includes('perabot')) ||
+          (selCat === 'elektronik' && (itemCat.includes('elektronik') || itemCat.includes('e-waste'))) ||
+          (selCat === 'pakaian' && (itemCat.includes('pakaian') || itemCat.includes('tekstil'))) ||
+          (selCat === 'khidmat/tenaga' && (itemCat.includes('khidmat') || itemCat.includes('tenaga') || itemCat.includes('kemahiran')));
+        if (!matches) return false;
       }
 
       // Search query filter
@@ -207,7 +218,7 @@ export default function ExplorerScreen() {
         const matchesTitle = item.title?.toLowerCase().includes(q);
         const matchesDesc = item.description?.toLowerCase().includes(q);
         const matchesCategory = item.category?.toLowerCase().includes(q);
-        const matchesSeller = item.sellerName?.toLowerCase().includes(q);
+        const matchesSeller = ((item as any).sellerName || (item as any).donorName)?.toLowerCase().includes(q);
         return matchesTitle || matchesDesc || matchesCategory || matchesSeller;
       }
 
@@ -301,28 +312,39 @@ export default function ExplorerScreen() {
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
+          keyboardShouldPersistTaps="always"
           contentContainerStyle={{ paddingHorizontal: 16 }}
         >
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategory === cat;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={cat}
                 onPress={() => setSelectedCategory(cat)}
-                className={`mr-2 px-3.5 py-1.5 rounded-full border ${
-                  isSelected 
-                    ? 'bg-emerald-600 border-emerald-600 shadow-sm shadow-emerald-600/30' 
-                    : 'bg-slate-50 border-slate-200'
-                }`}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                style={({ pressed }) => ({
+                  marginRight: 8,
+                  paddingHorizontal: 15,
+                  paddingVertical: 7,
+                  borderRadius: 9999,
+                  borderWidth: 1.5,
+                  backgroundColor: isSelected ? '#059669' : '#f8fafc',
+                  borderColor: isSelected ? '#059669' : '#e2e8f0',
+                  opacity: pressed ? 0.75 : 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                })}
               >
                 <Text
-                  className={`text-xs font-bold ${
-                    isSelected ? 'text-white' : 'text-slate-600'
-                  }`}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: isSelected ? '800' : '600',
+                    color: isSelected ? '#ffffff' : '#475569',
+                  }}
                 >
                   {cat}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </ScrollView>
@@ -332,6 +354,7 @@ export default function ExplorerScreen() {
       <ScrollView
         className="flex-1 px-4 pt-3"
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#059669']} />
         }

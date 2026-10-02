@@ -190,11 +190,11 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           {/* Header Area */}
-          <View className="mb-6 flex-row items-center gap-3.5">
+          <View className="mb-6 flex-row items-center gap-3">
             <Image 
-              source={require('../images/logo.png')} 
-              style={{ width: 56, height: 56, borderRadius: 16 }}
-              className="w-14 h-14 rounded-2xl shadow-sm"
+              source={require('../images/neighbourloop.png')} 
+              style={{ width: 68, height: 36 }}
+              className="w-16 h-9"
               resizeMode="contain"
             />
             <View className="flex-1">

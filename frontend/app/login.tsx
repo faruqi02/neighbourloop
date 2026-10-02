@@ -86,11 +86,11 @@ export default function LoginScreen() {
         >
             
           {/* Branding Area */}
-          <View className="items-center mb-10">
+          <View className="items-center mb-8">
             <Image 
-              source={require('../images/logo.png')} 
-              style={{ width: 96, height: 96, borderRadius: 24 }}
-              className="w-24 h-24 rounded-3xl mb-4 shadow-lg shadow-black/10" 
+              source={require('../images/neighbourloop.png')} 
+              style={{ width: 160, height: 80 }}
+              className="w-40 h-20 mb-3" 
               resizeMode="contain" 
             />
             <Text className="text-3xl font-black text-[#1E293B] tracking-tight">NeighbourLoop</Text>

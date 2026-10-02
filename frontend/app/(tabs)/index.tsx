@@ -113,8 +113,8 @@ export default function HomeDashboard() {
             onPress={() => router.push('/recycle')}
             className="w-[31%] bg-green-50/90 rounded-2xl p-3.5 items-center border border-green-100 shadow-sm"
           >
-            <View className="w-12 h-12 rounded-2xl bg-green-600 items-center justify-center mb-2 shadow-sm shadow-green-600/30">
-              <Image source={recycleIcon} style={{ width: 32, height: 32 }} className="w-8 h-8" resizeMode="contain" />
+            <View className="w-12 h-12 rounded-2xl items-center justify-center mb-2 shadow-sm shadow-green-600/25 overflow-hidden">
+              <Image source={recycleIcon} style={{ width: 48, height: 48, borderRadius: 14 }} className="w-12 h-12 rounded-2xl" resizeMode="contain" />
             </View>
             <Text className="text-xs font-bold text-green-900 text-center">Donate & Recycle</Text>
             <Text className="text-[10px] text-green-700 text-center mt-0.5">Derma & Kitar</Text>

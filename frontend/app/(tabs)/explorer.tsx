@@ -26,7 +26,6 @@ import {
   CheckCircle2,
   Trash2
 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
 import { useMarketStore } from '../../store/useMarketStore';
 import { useRecycleStore } from '../../store/useRecycleStore';
 import { useHelpStore } from '../../store/useHelpStore';
@@ -46,7 +45,6 @@ const CATEGORIES = [
 ];
 
 export default function ExplorerScreen() {
-  const router = useRouter();
   const { listings, fetchListings, deleteListing, loading: marketLoading } = useMarketStore();
   const { donations, fetchRecycleData, deleteDonation, loading: recycleLoading } = useRecycleStore();
   const { requests: helpRequests, fetchHelpRequests, deleteRequest, loading: helpLoading } = useHelpStore();
@@ -56,6 +54,11 @@ export default function ExplorerScreen() {
   const [selectedCategory, setSelectedCategory] = useState('Semua');
   const [refreshing, setRefreshing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+
+  // Filter & Sort State
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [sortBy, setSortBy] = useState<'nearest' | 'price_asc' | 'price_desc' | 'newest'>('nearest');
+  const [maxDistance, setMaxDistance] = useState<number | null>(null);
 
   // Chat Modal State
   const [chatModalVisible, setChatModalVisible] = useState(false);
@@ -196,10 +199,12 @@ export default function ExplorerScreen() {
     return visibleCombined;
   }, [listings, donations, helpRequests, currentUser, allUsers]);
 
-  // Filtered items based on search and category
+  const hasActiveFilters = sortBy !== 'nearest' || maxDistance !== null || selectedCategory !== 'Semua';
+
+  // Filtered and sorted items based on search, category, radius, and sort mode
   const filteredItems = useMemo(() => {
-    return allItems.filter((item) => {
-      // Category filter
+    const list = allItems.filter((item) => {
+      // Category / Module filter
       if (selectedCategory === 'Marketplace') {
         if (item.itemType !== 'marketplace') return false;
       } else if (selectedCategory === 'Help Nearby') {
@@ -207,7 +212,7 @@ export default function ExplorerScreen() {
       } else if (selectedCategory === 'Barang Percuma') {
         if (!item.isDonation && item.itemType !== 'recycle') return false;
       } else if (selectedCategory !== 'Semua') {
-        const itemCat = (item.category || '').toLowerCase().trim();
+        const itemCat = String(item.category || '').toLowerCase().trim();
         const selCat = selectedCategory.toLowerCase().trim();
         const matches = 
           itemCat === selCat || 
@@ -220,19 +225,41 @@ export default function ExplorerScreen() {
         if (!matches) return false;
       }
 
-      // Search query filter
+      // Max Distance filter
+      if (maxDistance !== null && (item.distance ?? 999) > maxDistance) {
+        return false;
+      }
+
+      // Search query filter (bulletproof safe string matching)
       if (search.trim()) {
-        const q = search.toLowerCase();
-        const matchesTitle = item.title?.toLowerCase().includes(q);
-        const matchesDesc = item.description?.toLowerCase().includes(q);
-        const matchesCategory = item.category?.toLowerCase().includes(q);
-        const matchesSeller = ((item as any).sellerName || (item as any).donorName)?.toLowerCase().includes(q);
-        return matchesTitle || matchesDesc || matchesCategory || matchesSeller;
+        const q = search.toLowerCase().trim();
+        const titleStr = String(item.title || '').toLowerCase();
+        const descStr = String(item.description || '').toLowerCase();
+        const catStr = String(item.category || '').toLowerCase();
+        const sellerStr = String((item as any).sellerName || (item as any).donorName || '').toLowerCase();
+        if (!titleStr.includes(q) && !descStr.includes(q) && !catStr.includes(q) && !sellerStr.includes(q)) {
+          return false;
+        }
       }
 
       return true;
     });
-  }, [allItems, selectedCategory, search]);
+
+    // Sorting
+    const sorted = [...list];
+    if (sortBy === 'price_asc') {
+      sorted.sort((a, b) => (Number((a as any).price) || 0) - (Number((b as any).price) || 0));
+    } else if (sortBy === 'price_desc') {
+      sorted.sort((a, b) => (Number((b as any).price) || 0) - (Number((a as any).price) || 0));
+    } else if (sortBy === 'newest') {
+      sorted.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    } else {
+      // Default: nearest distance
+      sorted.sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999));
+    }
+
+    return sorted;
+  }, [allItems, selectedCategory, maxDistance, search, sortBy]);
 
   const handleOpenWhatsApp = (phone?: string, title?: string) => {
     if (!phone) return;
@@ -302,16 +329,25 @@ export default function ExplorerScreen() {
             className="flex-1 ml-2.5 text-sm text-slate-800 font-medium"
             value={search}
             onChangeText={setSearch}
+            returnKeyType="search"
           />
           {search ? (
-            <TouchableOpacity onPress={() => setSearch('')} className="p-1">
+            <TouchableOpacity onPress={() => setSearch('')} className="p-1 mr-1.5">
               <X size={16} color="#94a3b8" />
             </TouchableOpacity>
-          ) : (
-            <View className="bg-emerald-50 p-1.5 rounded-lg">
-              <SlidersHorizontal size={14} color="#059669" />
-            </View>
-          )}
+          ) : null}
+
+          {/* Interactive Filter & Sort Button */}
+          <TouchableOpacity 
+            onPress={() => setFilterModalVisible(true)} 
+            activeOpacity={0.7}
+            className={`p-1.5 rounded-lg flex-row items-center ${hasActiveFilters ? 'bg-emerald-600' : 'bg-emerald-50'}`}
+          >
+            <SlidersHorizontal size={14} color={hasActiveFilters ? '#ffffff' : '#059669'} />
+            {hasActiveFilters && (
+              <View className="w-1.5 h-1.5 rounded-full bg-amber-400 ml-1" />
+            )}
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -793,6 +829,129 @@ export default function ExplorerScreen() {
           itemContext={activeChatContext || undefined}
         />
       )}
+
+      {/* Filter & Sort Bottom Sheet Modal */}
+      <Modal visible={filterModalVisible} transparent animationType="slide">
+        <View className="flex-1 justify-end bg-black/60">
+          <View className="bg-white rounded-t-3xl p-5 max-h-[85%] shadow-2xl">
+            {/* Header */}
+            <View className="flex-row justify-between items-center pb-3 border-b border-slate-100 mb-4">
+              <View className="flex-row items-center">
+                <SlidersHorizontal size={18} color="#059669" />
+                <Text className="text-lg font-black text-slate-900 ml-2">Penapis & Susunan</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setFilterModalVisible(false)} 
+                className="p-1.5 bg-slate-100 rounded-full"
+              >
+                <X size={18} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Susun Mengikut (Sort By) */}
+              <Text className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">
+                Susun Mengikut
+              </Text>
+              <View className="flex-row flex-wrap mb-4">
+                {[
+                  { id: 'nearest', label: '📍 Paling Dekat' },
+                  { id: 'price_asc', label: '💵 Harga: Rendah ke Tinggi' },
+                  { id: 'price_desc', label: '💰 Harga: Tinggi ke Rendah' },
+                  { id: 'newest', label: '⏱️ Terbaharu' }
+                ].map((s) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    onPress={() => setSortBy(s.id as any)}
+                    className={`mr-2 mb-2 px-3.5 py-2 rounded-xl border ${
+                      sortBy === s.id 
+                        ? 'bg-emerald-600 border-emerald-600' 
+                        : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <Text className={`text-xs font-bold ${sortBy === s.id ? 'text-white' : 'text-slate-700'}`}>
+                      {s.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Had Jarak (Max Distance) */}
+              <Text className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">
+                Had Jarak Komuniti
+              </Text>
+              <View className="flex-row flex-wrap mb-4">
+                {[
+                  { val: null, label: 'Semua Jarak' },
+                  { val: 5, label: '≤ 5 km' },
+                  { val: 10, label: '≤ 10 km' },
+                  { val: 25, label: '≤ 25 km' },
+                  { val: 50, label: '≤ 50 km' }
+                ].map((d) => (
+                  <TouchableOpacity
+                    key={String(d.val)}
+                    onPress={() => setMaxDistance(d.val)}
+                    className={`mr-2 mb-2 px-3.5 py-2 rounded-xl border ${
+                      maxDistance === d.val 
+                        ? 'bg-emerald-600 border-emerald-600' 
+                        : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <Text className={`text-xs font-bold ${maxDistance === d.val ? 'text-white' : 'text-slate-700'}`}>
+                      {d.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Modul Pilihan */}
+              <Text className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">
+                Kategori / Jenis Modul
+              </Text>
+              <View className="flex-row flex-wrap mb-5">
+                {CATEGORIES.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => setSelectedCategory(c)}
+                    className={`mr-2 mb-2 px-3 py-1.5 rounded-xl border ${
+                      selectedCategory === c 
+                        ? 'bg-emerald-600 border-emerald-600' 
+                        : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <Text className={`text-xs font-semibold ${selectedCategory === c ? 'text-white' : 'text-slate-700'}`}>
+                      {c}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Bottom Actions */}
+            <View className="flex-row items-center pt-3 border-t border-slate-100 gap-3">
+              <TouchableOpacity
+                onPress={() => {
+                  setSortBy('nearest');
+                  setMaxDistance(null);
+                  setSelectedCategory('Semua');
+                  setSearch('');
+                }}
+                className="py-3.5 px-4 rounded-2xl bg-slate-100 items-center justify-center"
+              >
+                <Text className="text-slate-700 font-bold text-xs">Reset Semua</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setFilterModalVisible(false)}
+                className="flex-1 py-3.5 rounded-2xl bg-emerald-600 items-center justify-center shadow-md shadow-emerald-900/20"
+              >
+                <Text className="text-white font-bold text-sm">
+                  Guna Penapis ({filteredItems.length} barang)
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

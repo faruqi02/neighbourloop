@@ -9,12 +9,14 @@ import {
   Platform,
   Pressable,
   Keyboard,
-  ScrollView
+  ScrollView,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUserStore } from '../store/useUserStore';
-import { LogIn, Key, Mail, Recycle, Eye, EyeOff, AtSign } from 'lucide-react-native';
+import { getApiBaseUrl } from '../services/api';
+import { LogIn, Key, Mail, Eye, EyeOff, AtSign } from 'lucide-react-native';
 import Constants from 'expo-constants';
 
 export default function LoginScreen() {
@@ -35,11 +37,7 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      let backendUrl = 'http://192.168.1.165:8000';
-      const debuggerHost = Constants.expoConfig?.hostUri;
-      if (debuggerHost) {
-        backendUrl = `http://${debuggerHost.split(':')[0]}:8000`;
-      }
+      const backendUrl = getApiBaseUrl();
 
       const response = await fetch(`${backendUrl}/auth/login`, {
         method: 'POST',
@@ -88,15 +86,15 @@ export default function LoginScreen() {
         >
             
           {/* Branding Area */}
-          <View className="items-center mb-12">
-            <View 
-              className="w-24 h-24 rounded-full items-center justify-center mb-5 shadow-lg shadow-black/10"
-              style={{ backgroundColor: '#00875A' }}
-            >
-              <Recycle size={48} color="white" />
-            </View>
+          <View className="items-center mb-10">
+            <Image 
+              source={require('../images/logo.png')} 
+              style={{ width: 96, height: 96, borderRadius: 24 }}
+              className="w-24 h-24 rounded-3xl mb-4 shadow-lg shadow-black/10" 
+              resizeMode="contain" 
+            />
             <Text className="text-3xl font-black text-[#1E293B] tracking-tight">NeighbourLoop</Text>
-            <Text className="text-slate-500 font-medium mt-2 text-sm tracking-wide">Sistem Komuniti Lestari Pintar</Text>
+            <Text className="text-slate-500 font-medium mt-1.5 text-sm tracking-wide">Sistem Komuniti Lestari Pintar</Text>
           </View>
 
           {/* Error Message */}

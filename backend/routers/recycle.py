@@ -282,3 +282,10 @@ def claim_donation(donation_id: str, background_tasks: BackgroundTasks, claimer_
     })
 
     return target
+
+@router.delete("/donations/{donation_id}")
+def delete_donation(donation_id: str, background_tasks: BackgroundTasks):
+    RECYCLE_CACHE["donations"] = [item for item in RECYCLE_CACHE["donations"] if item.id != donation_id]
+    background_tasks.add_task(sync_save_to_gas, {"action": "delete", "sheet": "Donations", "id": donation_id})
+    return {"success": True, "message": "Donation item deleted successfully"}
+

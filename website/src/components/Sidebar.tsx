@@ -10,6 +10,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import logoImg from '../assets/logo.png';
 
 export const Sidebar = () => {
   const { logout } = useAuth();
@@ -26,9 +27,11 @@ export const Sidebar = () => {
   return (
     <div className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col">
       <div className="p-6 border-b border-gray-200 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
-          <Recycle size={20} className="text-white" />
-        </div>
+        <img 
+          src={logoImg} 
+          alt="NeighbourLoop Logo" 
+          className="w-9 h-9 rounded-xl object-contain shadow-xs border border-emerald-100" 
+        />
         <span className="text-xl font-bold text-gray-800">NeighbourLoop</span>
       </div>
 

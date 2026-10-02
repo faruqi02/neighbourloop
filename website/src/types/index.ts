@@ -8,46 +8,85 @@ export interface User {
   location?: string;
   lat?: number;
   lng?: number;
-  radius_km: number;
+  radius_km?: number;
+  radiusKm?: number;
   role: 'User' | 'Admin';
   status: 'Aktif' | 'Digantung';
 }
 
 export interface Listing {
-  id?: string;
+  id: string;
   title: string;
   description: string;
   price: number;
   category: string;
-  image_url: string;
-  seller_name: string;
+  condition?: string;
+  imageUrl?: string;
+  sellerId?: string;
+  sellerName?: string;
+  sellerPhone?: string;
+  sellerContactNotes?: string;
+  distance?: number;
+  createdAt?: string;
 }
 
 export interface DonationItem {
-  id?: string;
+  id: string;
   title: string;
   description: string;
-  status: string;
-}
-
-export interface HelpRequest {
-  id?: string;
-  title: string;
-  description: string;
-  status: string;
-}
-
-export interface CommunityNotice {
-  id?: string;
-  title: string;
-  description: string;
-  date: string;
+  category: string;
+  imageUrl?: string;
+  donorId?: string;
+  donorName?: string;
+  donorPhone?: string;
+  donorContactNotes?: string;
+  distance?: number;
+  status: 'Available' | 'Claimed' | string;
+  claimedBy?: string;
+  createdAt?: string;
 }
 
 export interface RecycleCenter {
-  id?: string;
+  id: string;
   name: string;
+  type: string;
   address: string;
+  distance?: number;
+  contactPhone?: string;
+  operatingHours?: string;
+  typesAccepted?: string[];
+}
+
+export interface HelpRequest {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  type: 'Permintaan' | 'Tawaran' | string;
+  distance?: number;
+  requesterId?: string;
+  requesterName?: string;
+  requesterPhone?: string;
+  requesterContactNotes?: string;
+  imageUrl?: string;
+  status: 'Open' | 'Completed' | string;
+  fulfilledBy?: string;
+  createdAt?: string;
+}
+
+export interface CommunityNotice {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  date: string;
+  time?: string;
+  location: string;
+  organizer: string;
+  contactPerson?: string;
+  isImportant?: boolean;
+  imageUrl?: string;
+  createdAt?: string;
 }
 
 export interface AdminStats {

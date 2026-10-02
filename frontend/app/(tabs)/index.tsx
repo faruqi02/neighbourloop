@@ -21,6 +21,7 @@ import NoticeDetailModal from '../../components/NoticeDetailModal';
 import { CommunityNotice } from '../../types';
 
 const recycleIcon = require('../../images/recycle_icon.png');
+const logoIcon = require('../../images/logo.png');
 
 export default function HomeDashboard() {
   const { currentUser } = useUserStore();
@@ -86,8 +87,8 @@ export default function HomeDashboard() {
                 Platform kejiranan setempat untuk jual beli preloved, derma barangan, dan bantuan sesama jiran.
               </Text>
             </View>
-            <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center p-2">
-              <Image source={recycleIcon} style={{ width: 44, height: 44 }} className="w-11 h-11" resizeMode="contain" />
+            <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center p-1.5 overflow-hidden">
+              <Image source={logoIcon} style={{ width: 44, height: 44, borderRadius: 12 }} className="w-11 h-11 rounded-xl" resizeMode="contain" />
             </View>
           </View>
         </View>

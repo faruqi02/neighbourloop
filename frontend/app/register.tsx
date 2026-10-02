@@ -7,11 +7,13 @@ import {
   ActivityIndicator, 
   KeyboardAvoidingView, 
   Platform, 
-  ScrollView 
+  ScrollView,
+  Image 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useUserStore } from '../store/useUserStore';
+import { getApiBaseUrl } from '../services/api';
 import { 
   Key, 
   Mail, 
@@ -121,11 +123,7 @@ export default function RegisterScreen() {
         }
       }
 
-      let backendUrl = 'http://192.168.1.165:8000';
-      const debuggerHost = Constants.expoConfig?.hostUri;
-      if (debuggerHost) {
-        backendUrl = `http://${debuggerHost.split(':')[0]}:8000`;
-      }
+      const backendUrl = getApiBaseUrl();
 
       const payload = {
         name: name.trim(),
@@ -192,11 +190,19 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           {/* Header Area */}
-          <View className="mb-6">
-            <Text className="text-3xl font-black text-[#1E293B] tracking-tight">Daftar Akaun</Text>
-            <Text className="text-slate-500 font-medium mt-1 text-sm leading-5">
-              Sertai komuniti NeighbourLoop dan mulakan kelestarian di kejiranan anda.
-            </Text>
+          <View className="mb-6 flex-row items-center gap-3.5">
+            <Image 
+              source={require('../images/logo.png')} 
+              style={{ width: 56, height: 56, borderRadius: 16 }}
+              className="w-14 h-14 rounded-2xl shadow-sm"
+              resizeMode="contain"
+            />
+            <View className="flex-1">
+              <Text className="text-2xl font-black text-[#1E293B] tracking-tight">Daftar Akaun</Text>
+              <Text className="text-slate-500 font-medium text-xs leading-4 mt-0.5">
+                Sertai komuniti NeighbourLoop dan mulakan kelestarian di kejiranan anda.
+              </Text>
+            </View>
           </View>
 
           {/* Error Message */}

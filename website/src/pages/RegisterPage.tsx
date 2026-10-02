@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Recycle, Mail, Key, UserPlus, Activity, User, MapPin } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+import logoImg from '../assets/logo.png';
 
 export const RegisterPage = () => {
   const { login } = useAuth();
@@ -67,9 +68,11 @@ export const RegisterPage = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-600 flex items-center justify-center mb-4 shadow-lg shadow-emerald-600/20">
-            <Recycle size={32} className="text-white" />
-          </div>
+          <img 
+            src={logoImg} 
+            alt="NeighbourLoop Logo" 
+            className="w-20 h-20 rounded-2xl mb-4 shadow-lg shadow-emerald-600/10 object-contain" 
+          />
           <h1 className="text-2xl font-black text-gray-900">Daftar Akaun</h1>
           <p className="text-gray-500 font-medium mt-1 text-center">Sertai NeighbourLoop dan mulakan kelestarian di kawasan kejiranan anda.</p>
         </div>

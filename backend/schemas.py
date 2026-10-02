@@ -152,7 +152,7 @@ class HelpCreate(BaseModel):
 class CommunityNotice(BaseModel):
     id: str
     title: str
-    category: Literal['Gotong-Royong', 'Penyelenggaraan', 'Keselamatan', 'Hebahan', 'Aktiviti Komuniti']
+    category: str
     description: str
     date: str
     time: Optional[str] = None
@@ -165,7 +165,7 @@ class CommunityNotice(BaseModel):
 
 class CommunityNoticeCreate(BaseModel):
     title: str
-    category: Literal['Gotong-Royong', 'Penyelenggaraan', 'Keselamatan', 'Hebahan', 'Aktiviti Komuniti']
+    category: str
     description: str
     date: str
     time: Optional[str] = None

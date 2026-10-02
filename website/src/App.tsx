@@ -6,11 +6,10 @@ import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { UsersPage } from './pages/UsersPage';
 
-// Placeholder pages
-const MarketplacePage = () => <div className="text-2xl font-bold">Marketplace Moderation</div>;
-const RecyclePage = () => <div className="text-2xl font-bold">Donate & Recycle</div>;
-const HelpPage = () => <div className="text-2xl font-bold">Help Nearby</div>;
-const NoticesPage = () => <div className="text-2xl font-bold">Notices Management</div>;
+import { MarketplacePage } from './pages/MarketplacePage';
+import { RecyclePage } from './pages/RecyclePage';
+import { HelpPage } from './pages/HelpPage';
+import { NoticesPage } from './pages/NoticesPage';
 
 function App() {
   return (

@@ -13,8 +13,7 @@ export {
 } from 'expo-router';
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
+  initialRouteName: 'login',
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -50,6 +49,7 @@ function RootLayoutNav() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!segments) return;
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
 
     if (!currentUser && !inAuthGroup) {

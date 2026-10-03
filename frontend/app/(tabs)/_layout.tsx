@@ -1,4 +1,4 @@
-import { Tabs, Redirect } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Image } from 'react-native';
 import { Home, List, HeartHandshake, User, MessageCircle } from 'lucide-react-native';
 import { useUserStore } from '../../store/useUserStore';
@@ -7,10 +7,6 @@ const recycleIcon = require('../../images/recycle_icon.png');
 
 export default function TabLayout() {
   const { currentUser } = useUserStore();
-
-  if (!currentUser) {
-    return <Redirect href="/login" />;
-  }
 
   return (
     <Tabs

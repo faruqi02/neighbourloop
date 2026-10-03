@@ -16,7 +16,7 @@ import {
   Megaphone,
   AlertCircle
 } from 'lucide-react-native';
-import { useRouter, useFocusEffect, Redirect } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import LocationModal from '../../components/LocationModal';
 import NoticeDetailModal from '../../components/NoticeDetailModal';
 import { CommunityNotice } from '../../types';
@@ -51,7 +51,7 @@ export default function HomeDashboard() {
   const [selectedNotice, setSelectedNotice] = useState<CommunityNotice | null>(null);
 
   if (!currentUser) {
-    return <Redirect href="/login" />;
+    return null;
   }
 
   return (

@@ -24,13 +24,15 @@ import {
   ShoppingBag, 
   SlidersHorizontal,
   CheckCircle2,
-  Trash2
+  Trash2,
+  ChevronRight
 } from 'lucide-react-native';
 import { useMarketStore } from '../../store/useMarketStore';
 import { useRecycleStore } from '../../store/useRecycleStore';
 import { useHelpStore } from '../../store/useHelpStore';
 import { useUserStore } from '../../store/useUserStore';
 import ChatModal from '../../components/ChatModal';
+import LocationModal from '../../components/LocationModal';
 
 const CATEGORIES = [
   'Semua',
@@ -55,10 +57,18 @@ export default function ExplorerScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
-  // Filter & Sort State
+  // Location & Radius State (Matched & Synced with currentUser.radiusKm)
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [sortBy, setSortBy] = useState<'nearest' | 'price_asc' | 'price_desc' | 'newest'>('nearest');
-  const [maxDistance, setMaxDistance] = useState<number | null>(null);
+  const [maxDistance, setMaxDistance] = useState<number | null>(currentUser?.radiusKm ?? 5);
+
+  // Sync initial and updated community radius when currentUser.radiusKm changes
+  useEffect(() => {
+    if (currentUser?.radiusKm !== undefined && currentUser?.radiusKm !== null) {
+      setMaxDistance(currentUser.radiusKm);
+    }
+  }, [currentUser?.radiusKm]);
 
   // Chat Modal State
   const [chatModalVisible, setChatModalVisible] = useState(false);
@@ -199,7 +209,8 @@ export default function ExplorerScreen() {
     return visibleCombined;
   }, [listings, donations, helpRequests, currentUser, allUsers]);
 
-  const hasActiveFilters = sortBy !== 'nearest' || maxDistance !== null || selectedCategory !== 'Semua';
+  const userDefaultRadius = currentUser?.radiusKm ?? 5;
+  const hasActiveFilters = sortBy !== 'nearest' || (maxDistance !== null && maxDistance !== userDefaultRadius) || selectedCategory !== 'Semua';
 
   // Filtered and sorted items based on search, category, radius, and sort mode
   const filteredItems = useMemo(() => {
@@ -312,12 +323,20 @@ export default function ExplorerScreen() {
             <ShoppingBag size={22} color="white" />
             <Text className="text-xl font-black text-white ml-2 tracking-tight">Explorer</Text>
           </View>
-          <View className="flex-row items-center bg-emerald-700/80 px-2.5 py-1 rounded-full border border-emerald-500/30">
+          <TouchableOpacity 
+            onPress={() => setLocationModalVisible(true)}
+            activeOpacity={0.8}
+            className="flex-row items-center bg-emerald-700/90 px-3 py-1.5 rounded-full border border-emerald-500/40"
+          >
             <MapPin size={12} color="#a7f3d0" />
-            <Text className="text-emerald-100 text-xs font-semibold ml-1" numberOfLines={1}>
+            <Text className="text-white text-xs font-bold ml-1.5 max-w-[130px]" numberOfLines={1}>
               {currentUser.location || 'Kawasan Kejiranan'}
             </Text>
-          </View>
+            <Text className="text-emerald-200 text-xs font-bold ml-1">
+              ({maxDistance !== null ? `${maxDistance}km` : 'Semua'})
+            </Text>
+            <ChevronRight size={12} color="#a7f3d0" className="ml-0.5" />
+          </TouchableOpacity>
         </View>
 
         {/* Search Bar Input */}
@@ -883,10 +902,10 @@ export default function ExplorerScreen() {
               <View className="flex-row flex-wrap mb-4">
                 {[
                   { val: null, label: 'Semua Jarak' },
+                  { val: 2, label: '≤ 2 km' },
                   { val: 5, label: '≤ 5 km' },
                   { val: 10, label: '≤ 10 km' },
-                  { val: 25, label: '≤ 25 km' },
-                  { val: 50, label: '≤ 50 km' }
+                  { val: 20, label: '≤ 20 km' }
                 ].map((d) => (
                   <TouchableOpacity
                     key={String(d.val)}
@@ -932,7 +951,7 @@ export default function ExplorerScreen() {
               <TouchableOpacity
                 onPress={() => {
                   setSortBy('nearest');
-                  setMaxDistance(null);
+                  setMaxDistance(currentUser?.radiusKm ?? 5);
                   setSelectedCategory('Semua');
                   setSearch('');
                 }}
@@ -952,6 +971,12 @@ export default function ExplorerScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Location & Radius Settings Modal */}
+      <LocationModal
+        visible={locationModalVisible}
+        onClose={() => setLocationModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }

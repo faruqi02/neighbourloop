@@ -41,7 +41,7 @@ export default function ImagePickerButton({
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.7,
+        quality: 0.5,
         base64: true,
       });
 
@@ -70,7 +70,7 @@ export default function ImagePickerButton({
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.7,
+        quality: 0.5,
         base64: true,
       });
 

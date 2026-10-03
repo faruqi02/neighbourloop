@@ -44,7 +44,7 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
   const baseUrl = getApiBaseUrl();
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for Google Apps Script
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for Google Apps Script & Drive
 
     const response = await fetch(`${baseUrl}${endpoint}`, {
       ...options,

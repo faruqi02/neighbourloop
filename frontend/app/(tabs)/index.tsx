@@ -22,7 +22,7 @@ import NoticeDetailModal from '../../components/NoticeDetailModal';
 import { CommunityNotice } from '../../types';
 
 const recycleIcon = require('../../images/recycle_icon.png');
-const logoIcon = require('../../images/logo.png');
+const neighbourloopLogo = require('../../images/neighbourloop_glow.png');
 
 export default function HomeDashboard() {
   const { currentUser } = useUserStore();
@@ -97,7 +97,7 @@ export default function HomeDashboard() {
 
         {/* Welcome Community Banner (Clean, no points, no SDG) */}
         <View className="bg-gradient-to-r from-emerald-600 to-green-700 bg-green-700 rounded-3xl p-5 mb-6 shadow-md shadow-green-900/20">
-          <View className="flex-row justify-between items-start">
+          <View className="flex-row justify-between items-center">
             <View className="flex-1 pr-3">
               <View className="flex-row items-center bg-white/20 self-start px-2.5 py-1 rounded-full mb-2">
                 <Users size={14} color="#ffffff" />
@@ -108,8 +108,19 @@ export default function HomeDashboard() {
                 Platform kejiranan setempat untuk jual beli preloved, derma barangan, dan bantuan sesama jiran.
               </Text>
             </View>
-            <View className="w-14 h-14 rounded-2xl bg-white/20 items-center justify-center p-1.5 overflow-hidden">
-              <Image source={logoIcon} style={{ width: 44, height: 44, borderRadius: 12 }} className="w-11 h-11 rounded-xl" resizeMode="contain" />
+            <View className="items-center justify-center pl-1">
+              <Image 
+                source={neighbourloopLogo} 
+                style={{ 
+                  width: 88, 
+                  height: 52,
+                  shadowColor: '#ffffff',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.9,
+                  shadowRadius: 10,
+                }} 
+                resizeMode="contain" 
+              />
             </View>
           </View>
         </View>

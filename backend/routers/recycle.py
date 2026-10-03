@@ -225,8 +225,8 @@ def get_donations(status: Optional[str] = Query(None, description="Available or 
 
 @router.post("/donations", response_model=DonationItem)
 def create_donation(data: DonationCreate, background_tasks: BackgroundTasks, user_id: str = Query("u1")):
-    donor_id = data.donorId or user_id or "u1"
-    donor_name = data.donorName or "Penderma"
+    donor_id = getattr(data, "donorId", None) or user_id or "u1"
+    donor_name = getattr(data, "donorName", None) or "Penderma"
     if donor_name == "Penderma":
         try:
             from routers.admin import CACHE as ADMIN_CACHE
@@ -243,13 +243,13 @@ def create_donation(data: DonationCreate, background_tasks: BackgroundTasks, use
     else:
         donor_name = "Penderma"
 
-    donor_phone = data.donorPhone or ""
+    donor_phone = getattr(data, "donorPhone", None) or ""
     new_id = f"d_{uuid.uuid4().hex[:8]}"
     created_at = time.strftime("%Y-%m-%d %H:%M")
 
     # Image upload to Google Drive if base64 provided
-    img_url = data.imageUrl or "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400"
-    base64_data = data.imageBase64
+    img_url = getattr(data, "imageUrl", None) or "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400"
+    base64_data = getattr(data, "imageBase64", None)
     if not base64_data and img_url and img_url.startswith("data:image"):
         base64_data = img_url
 

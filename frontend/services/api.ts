@@ -64,7 +64,11 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
       return null;
     }
     return await response.json();
-  } catch (err) {
+  } catch (err: any) {
+    // Normal cancellation (e.g. user refreshed the page or navigated away), ignore silently
+    if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
+      return null;
+    }
     console.warn(`[API] Ralat panggilan ke ${baseUrl}${endpoint}:`, err);
     // Fallback smoothly to offline state
     return null;

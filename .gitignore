@@ -16,8 +16,12 @@ node_modules/
 dist/
 web-build/
 
-# Misc
-*.bat
-!auto_run.bat
+# Misc & OS
 .DS_Store
+Thumbs.db
 *.log
+cloudflared.log
+
+# Generated Runtime Files
+qr_web*.png
+test_qr.png

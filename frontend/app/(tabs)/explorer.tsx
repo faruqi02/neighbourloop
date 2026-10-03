@@ -317,41 +317,50 @@ export default function ExplorerScreen() {
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       {/* Top Header with Shopee-style Search Bar */}
-      <View className="bg-emerald-600 px-4 pt-2 pb-4 shadow-md shadow-emerald-900/20">
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center">
+      <View style={{ backgroundColor: '#059669', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <ShoppingBag size={22} color="white" />
-            <Text className="text-xl font-black text-white ml-2 tracking-tight">Explorer</Text>
+            <Text style={{ fontSize: 20, fontWeight: '900', color: 'white', marginLeft: 8 }}>Explorer</Text>
           </View>
           <TouchableOpacity 
             onPress={() => setLocationModalVisible(true)}
             activeOpacity={0.8}
-            className="flex-row items-center bg-emerald-700/90 px-3 py-1.5 rounded-full border border-emerald-500/40"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#047857',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 9999,
+              borderWidth: 1,
+              borderColor: '#6ee7b7',
+            }}
           >
             <MapPin size={12} color="#a7f3d0" />
-            <Text className="text-white text-xs font-bold ml-1.5 max-w-[130px]" numberOfLines={1}>
+            <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold', marginLeft: 6, maxWidth: 130 }} numberOfLines={1}>
               {currentUser.location || 'Kawasan Kejiranan'}
             </Text>
-            <Text className="text-emerald-200 text-xs font-bold ml-1">
+            <Text style={{ color: '#a7f3d0', fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>
               ({maxDistance !== null ? `${maxDistance}km` : 'Semua'})
             </Text>
-            <ChevronRight size={12} color="#a7f3d0" className="ml-0.5" />
+            <ChevronRight size={12} color="#a7f3d0" />
           </TouchableOpacity>
         </View>
 
         {/* Search Bar Input */}
-        <View className="flex-row items-center bg-white rounded-2xl px-3.5 py-2.5 shadow-sm">
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 }}>
           <Search size={18} color="#059669" />
           <TextInput
             placeholder="Cari barang, perabot, pakaian, gajet..."
             placeholderTextColor="#94a3b8"
-            className="flex-1 ml-2.5 text-sm text-slate-800 font-medium"
+            style={{ flex: 1, marginLeft: 10, fontSize: 14, color: '#1e293b', fontWeight: '500', paddingVertical: 0 }}
             value={search}
             onChangeText={setSearch}
             returnKeyType="search"
           />
           {search ? (
-            <TouchableOpacity onPress={() => setSearch('')} className="p-1 mr-1.5">
+            <TouchableOpacity onPress={() => setSearch('')} style={{ padding: 4, marginRight: 6 }}>
               <X size={16} color="#94a3b8" />
             </TouchableOpacity>
           ) : null}
@@ -360,11 +369,17 @@ export default function ExplorerScreen() {
           <TouchableOpacity 
             onPress={() => setFilterModalVisible(true)} 
             activeOpacity={0.7}
-            className={`p-1.5 rounded-lg flex-row items-center ${hasActiveFilters ? 'bg-emerald-600' : 'bg-emerald-50'}`}
+            style={{
+              padding: 6,
+              borderRadius: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: hasActiveFilters ? '#059669' : '#ecfdf5',
+            }}
           >
             <SlidersHorizontal size={14} color={hasActiveFilters ? '#ffffff' : '#059669'} />
             {hasActiveFilters && (
-              <View className="w-1.5 h-1.5 rounded-full bg-amber-400 ml-1" />
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#fbbf24', marginLeft: 4 }} />
             )}
           </TouchableOpacity>
         </View>
@@ -432,39 +447,80 @@ export default function ExplorerScreen() {
           </Text>
         </View>
 
-        {/* Empty State */}
+        {/* Empty State ("Item Not Found") */}
         {filteredItems.length === 0 ? (
-          <View className="items-center justify-center py-16 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm mt-2">
-            <View className="w-16 h-16 rounded-full bg-slate-100 items-center justify-center mb-3">
-              <ShoppingBag size={28} color="#94a3b8" />
+          <View 
+            style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 44,
+              paddingHorizontal: 24,
+              backgroundColor: '#ffffff',
+              borderRadius: 24,
+              borderWidth: 1,
+              borderColor: '#f1f5f9',
+              marginTop: 12,
+            }}
+          >
+            <View 
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: '#f1f5f9',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 12,
+              }}
+            >
+              <Search size={28} color="#94a3b8" />
             </View>
-            <Text className="text-slate-800 font-bold text-base text-center">Tiada Barangan Dijumpai</Text>
-            <Text className="text-slate-400 text-xs text-center mt-1 max-w-[240px]">
-              Cuba ubah carian anda atau pilih kategori lain untuk melihat pilihan komuniti.
+            <Text style={{ color: '#1e293b', fontWeight: 'bold', fontSize: 16, textAlign: 'center' }}>
+              Item Tidak Dijumpai
+            </Text>
+            <Text style={{ color: '#64748b', fontSize: 12, textAlign: 'center', marginTop: 4, maxWidth: 260 }}>
+              {search.trim() 
+                ? `Tiada sebarang hasil padanan untuk "${search.trim()}".` 
+                : 'Tiada barangan dalam pilihan kategori atau had jarak semasa.'}
             </Text>
             <TouchableOpacity
               onPress={() => {
                 setSearch('');
                 setSelectedCategory('Semua');
+                if (currentUser?.radiusKm) setMaxDistance(currentUser.radiusKm);
               }}
-              className="mt-4 bg-emerald-600 px-4 py-2 rounded-xl"
+              style={{
+                marginTop: 16,
+                backgroundColor: '#059669',
+                paddingHorizontal: 18,
+                paddingVertical: 10,
+                borderRadius: 12,
+              }}
+              activeOpacity={0.8}
             >
-              <Text className="text-white font-bold text-xs">Reset Carian</Text>
+              <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>Reset Carian</Text>
             </TouchableOpacity>
           </View>
         ) : (
           /* 2-Column Grid Cards ("Box Box") */
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-            {filteredItems.map((item: any) => (
+            {filteredItems.map((item: any, index: number) => (
               <TouchableOpacity
-                key={`${item.itemType || (item.isDonation ? 'don' : 'mkt')}_${item.id}`}
+                key={`card_${item.itemType || (item.isDonation ? 'don' : 'mkt')}_${item.id || index}`}
                 onPress={() => setSelectedItem(item)}
                 activeOpacity={0.88}
-                style={{ width: '48.5%' }}
-                className="bg-white rounded-2xl mb-3.5 border border-slate-200/80 shadow-sm shadow-slate-100 overflow-hidden"
+                style={{
+                  width: '48.5%',
+                  backgroundColor: '#ffffff',
+                  borderRadius: 16,
+                  marginBottom: 14,
+                  borderWidth: 1,
+                  borderColor: '#e2e8f0',
+                  overflow: 'hidden',
+                }}
               >
                 {/* Image Container with Badges (Box Box) */}
-                <View style={{ width: '100%', aspectRatio: 1 }} className="relative bg-slate-100">
+                <View style={{ width: '100%', aspectRatio: 1, position: 'relative', backgroundColor: '#f1f5f9' }}>
                   <Image
                     source={{ 
                       uri: item.imageUrl || (
@@ -481,8 +537,8 @@ export default function ExplorerScreen() {
 
                   {/* Blocked Badge (if viewed by author) */}
                   {(item.isBlocked || item.status === 'Disekat') && (
-                    <View className="absolute top-2 left-2 bg-rose-600 px-2 py-0.5 rounded-md shadow-sm z-10">
-                      <Text className="text-[10px] font-black text-white uppercase tracking-tight">
+                    <View style={{ position: 'absolute', top: 8, left: 8, backgroundColor: '#dc2626', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, zIndex: 10 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '900', color: '#ffffff', textTransform: 'uppercase' }}>
                         Disekat
                       </Text>
                     </View>
@@ -490,57 +546,73 @@ export default function ExplorerScreen() {
 
                   {/* Top-Right Badge (Condition or Free or Help) */}
                   <View 
-                    className={`absolute top-2 right-2 px-2 py-0.5 rounded-md shadow-sm ${
-                      item.isHelp
-                        ? 'bg-purple-700'
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      paddingHorizontal: 7,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                      backgroundColor: item.isHelp
+                        ? '#6b21a8'
                         : item.isDonation 
-                          ? 'bg-purple-600' 
+                          ? '#9333ea' 
                           : item.badgeText === 'Baru' 
-                            ? 'bg-rose-500' 
-                            : 'bg-emerald-600'
-                    }`}
+                            ? '#f43f5e' 
+                            : '#059669',
+                    }}
                   >
-                    <Text className="text-[10px] font-black text-white uppercase tracking-tight">
+                    <Text style={{ fontSize: 10, fontWeight: '900', color: '#ffffff', textTransform: 'uppercase' }}>
                       {item.badgeText}
                     </Text>
                   </View>
 
                   {/* Bottom-Left Distance Badge */}
-                  <View className="absolute bottom-2 left-2 bg-black/60 px-2 py-0.5 rounded-full flex-row items-center">
+                  <View 
+                    style={{
+                      position: 'absolute',
+                      bottom: 8,
+                      left: 8,
+                      backgroundColor: 'rgba(0,0,0,0.65)',
+                      paddingHorizontal: 7,
+                      paddingVertical: 2,
+                      borderRadius: 9999,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                  >
                     <MapPin size={9} color="#cbd5e1" />
-                    <Text className="text-[10px] text-white font-bold ml-0.5">
+                    <Text style={{ fontSize: 10, color: '#ffffff', fontWeight: 'bold', marginLeft: 2 }}>
                       {Number(item.distance || 0).toFixed(1)} km
                     </Text>
                   </View>
                 </View>
 
                 {/* Card Content (Title, Price, Location) */}
-                <View className="p-2.5 flex-1 justify-between">
+                <View style={{ padding: 10, flex: 1, justifyContent: 'space-between' }}>
                   {/* Category Pill */}
-                  <View className="self-start mb-1">
-                    <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                  <View style={{ alignSelf: 'flex-start', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>
                       {item.category || (item.isHelp ? 'Bantuan' : 'Komuniti')}
                     </Text>
                   </View>
 
                   {/* Title (2 lines max clamp) */}
                   <Text 
-                    className="text-xs font-bold text-slate-800 leading-snug mb-1.5 h-8" 
+                    style={{ fontSize: 12, fontWeight: 'bold', color: '#1e293b', lineHeight: 16, marginBottom: 6, height: 32 }}
                     numberOfLines={2}
                   >
                     {item.title}
                   </Text>
 
                   {/* Price Tag (Big, bold, Shopee-style) */}
-                  <View className="flex-row items-baseline mb-1">
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 4 }}>
                     <Text 
-                      className={`text-base font-black ${
-                        item.isHelp 
-                          ? 'text-purple-700' 
-                          : item.isDonation 
-                            ? 'text-purple-600' 
-                            : 'text-emerald-600'
-                      }`}
+                      style={{
+                        fontSize: 16,
+                        fontWeight: '900',
+                        color: item.isHelp ? '#6b21a8' : item.isDonation ? '#9333ea' : '#059669',
+                      }}
                     >
                       {item.displayPrice}
                     </Text>
@@ -563,17 +635,17 @@ export default function ExplorerScreen() {
                     const displayName = anyItem.sellerName || anyItem.donorName || 'Jiran';
 
                     return (
-                      <View className="flex-row items-center justify-between pt-1 border-t border-slate-100">
-                        <Text className="text-[11px] text-slate-500 font-medium flex-1 mr-1" numberOfLines={1}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 6, borderTopWidth: 1, borderTopColor: '#f1f5f9' }}>
+                        <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '500', flex: 1, marginRight: 4 }} numberOfLines={1}>
                           {isMyItem ? `${displayName} (Anda)` : displayName}
                         </Text>
                         {isMyItem ? (
-                          <View className="bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                            <Text className="text-[9px] text-emerald-700 font-bold">Iklan Anda</Text>
+                          <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                            <Text style={{ fontSize: 9, color: '#047857', fontWeight: 'bold' }}>Iklan Anda</Text>
                           </View>
                         ) : (
-                          <View className="bg-slate-100 px-1.5 py-0.5 rounded">
-                            <Text className="text-[9px] text-slate-600 font-bold">
+                          <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                            <Text style={{ fontSize: 9, color: '#475569', fontWeight: 'bold' }}>
                               {item.isHelp ? (anyItem.type === 'Permintaan' ? 'Minta Tolong' : 'Sedia Bantu') : (item.isDonation ? 'Derma' : 'Jual')}
                             </Text>
                           </View>

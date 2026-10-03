@@ -18,6 +18,10 @@ export function getApiBaseUrl(): string {
   // 2. Persekitaran Web (Browser)
   if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location?.hostname) {
     const host = window.location.hostname;
+    // Jika diakses melalui Cloudflare Tunnel / domain luar, gunakan origin semasa (HTTPS)
+    if (host.includes('trycloudflare.com') || host.includes('.loca.lt') || host.includes('.ngrok')) {
+      return window.location.origin;
+    }
     if (host && host !== 'localhost' && host !== '127.0.0.1') {
       return `http://${host}:8000`;
     }
@@ -37,7 +41,7 @@ export function getApiBaseUrl(): string {
   }
 
   // 4. Default fallback
-  return 'http://192.168.0.216:8000';
+  return 'http://192.168.100.129:8000';
 }
 
 export async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T | null> {

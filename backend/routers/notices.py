@@ -61,7 +61,11 @@ def format_gas_created(val: str) -> str:
     return val
 
 @router.get("", response_model=List[CommunityNotice])
-def get_community_notices(category: Optional[str] = Query(None, description="Category filter")):
+def get_community_notices(
+    category: Optional[str] = Query(None, description="Category filter"),
+    status: Optional[str] = Query(None, description="Status filter: Approved, Pending, or all"),
+    user_id: Optional[str] = Query(None, description="User ID to include own pending notices")
+):
     now = time.time()
     if (now - NOTICES_CACHE["last_fetched"] > CACHE_TTL) or not NOTICES_CACHE["data"]:
         try:
@@ -79,6 +83,10 @@ def get_community_notices(category: Optional[str] = Query(None, description="Cat
                     raw_important = str(d.get("isImportant", "")).lower()
                     is_imp = raw_important in ["true", "1", "yes"]
 
+                    raw_status = str(d.get("status") or "Approved").capitalize()
+                    if raw_status not in ["Approved", "Pending", "Rejected"]:
+                        raw_status = "Approved"
+
                     parsed.append(CommunityNotice(
                         id=str(d.get("id") or f"not_{uuid.uuid4().hex[:6]}"),
                         title=str(d.get("title") or "Notis Komuniti"),
@@ -91,7 +99,10 @@ def get_community_notices(category: Optional[str] = Query(None, description="Cat
                         contactPerson=str(d.get("contactPerson") or ""),
                         isImportant=is_imp,
                         imageUrl=d.get("imageUrl") or None,
-                        createdAt=format_gas_created(d.get("createdAt"))
+                        createdAt=format_gas_created(d.get("createdAt")),
+                        status=raw_status,
+                        authorId=str(d.get("authorId") or "") if d.get("authorId") else None,
+                        authorName=str(d.get("authorName") or "") if d.get("authorName") else None
                     ))
                 NOTICES_CACHE["data"] = parsed
                 NOTICES_CACHE["last_fetched"] = now
@@ -99,6 +110,23 @@ def get_community_notices(category: Optional[str] = Query(None, description="Cat
             print("Notice fetch err:", e)
 
     results = list(NOTICES_CACHE["data"])
+
+    # Status filter logic
+    if status and status.lower() == "all":
+        # Return all (for admin portal)
+        pass
+    elif status:
+        results = [n for n in results if (n.status or "Approved").lower() == status.lower()]
+    else:
+        # Default public feed: Approved notices + own pending notices if user_id provided
+        if user_id:
+            results = [
+                n for n in results 
+                if (n.status or "Approved") == "Approved" or (n.status == "Pending" and n.authorId == user_id)
+            ]
+        else:
+            results = [n for n in results if (n.status or "Approved") == "Approved"]
+
     if category and category != "Semua":
         results = [n for n in results if n.category.lower() == category.lower()]
     return results
@@ -107,6 +135,7 @@ def get_community_notices(category: Optional[str] = Query(None, description="Cat
 def create_community_notice(data: CommunityNoticeCreate, background_tasks: BackgroundTasks):
     new_id = f"not_{uuid.uuid4().hex[:6]}"
     created_at = time.strftime("%Y-%m-%d %H:%M")
+    notice_status = data.status or "Pending"
 
     row_data = {
         "id": new_id,
@@ -120,7 +149,10 @@ def create_community_notice(data: CommunityNoticeCreate, background_tasks: Backg
         "contactPerson": data.contactPerson or "",
         "isImportant": "TRUE" if data.isImportant else "FALSE",
         "imageUrl": data.imageUrl or "",
-        "createdAt": created_at
+        "createdAt": created_at,
+        "status": notice_status,
+        "authorId": data.authorId or "",
+        "authorName": data.authorName or ""
     }
 
     new_notice = CommunityNotice(
@@ -135,13 +167,58 @@ def create_community_notice(data: CommunityNoticeCreate, background_tasks: Backg
         contactPerson=data.contactPerson,
         isImportant=data.isImportant or False,
         imageUrl=data.imageUrl,
-        createdAt=created_at
+        createdAt=created_at,
+        status=notice_status,
+        authorId=data.authorId,
+        authorName=data.authorName
     )
 
     NOTICES_CACHE["data"].insert(0, new_notice)
     background_tasks.add_task(sync_save_to_gas, {"action": "create", "sheet": "CommunityNotices", "data": row_data})
 
     return new_notice
+
+@router.post("/{notice_id}/approve", response_model=CommunityNotice)
+@router.put("/{notice_id}/approve", response_model=CommunityNotice)
+def approve_community_notice(notice_id: str, background_tasks: BackgroundTasks):
+    target = None
+    for n in NOTICES_CACHE["data"]:
+        if n.id == notice_id:
+            n.status = "Approved"
+            target = n
+            break
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Notice not found")
+
+    background_tasks.add_task(sync_save_to_gas, {
+        "action": "update",
+        "sheet": "CommunityNotices",
+        "id": notice_id,
+        "data": {"status": "Approved"}
+    })
+    return target
+
+@router.post("/{notice_id}/reject", response_model=CommunityNotice)
+@router.put("/{notice_id}/reject", response_model=CommunityNotice)
+def reject_community_notice(notice_id: str, background_tasks: BackgroundTasks):
+    target = None
+    for n in NOTICES_CACHE["data"]:
+        if n.id == notice_id:
+            n.status = "Rejected"
+            target = n
+            break
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Notice not found")
+
+    background_tasks.add_task(sync_save_to_gas, {
+        "action": "update",
+        "sheet": "CommunityNotices",
+        "id": notice_id,
+        "data": {"status": "Rejected"}
+    })
+    return target
 
 @router.delete("/{notice_id}")
 def delete_community_notice(notice_id: str, background_tasks: BackgroundTasks):

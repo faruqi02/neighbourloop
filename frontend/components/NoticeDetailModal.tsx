@@ -45,6 +45,16 @@ export default function NoticeDetailModal({ notice, onClose }: NoticeDetailModal
             {notice.title}
           </Text>
 
+          {notice.status === 'Pending' && (
+            <View className="bg-amber-50 p-3 rounded-2xl mb-4 border border-amber-300 flex-row items-center">
+              <Clock size={16} color="#b45309" />
+              <View className="ml-2 flex-1">
+                <Text className="text-xs font-bold text-amber-900">Status: Menunggu Kelulusan Admin (In Review)</Text>
+                <Text className="text-[11px] text-amber-700 mt-0.5">Notis ini telah dihantar dan sedang disemak oleh admin sebelum disiarkan kepada umum.</Text>
+              </View>
+            </View>
+          )}
+
           {/* Quick Info Grid */}
           <View className="bg-gray-50 p-4 rounded-2xl mb-5 border border-gray-200">
             <View className="flex-row items-center mb-2.5">

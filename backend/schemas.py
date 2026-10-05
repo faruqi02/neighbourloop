@@ -115,6 +115,10 @@ class SmartRecommendRequest(BaseModel):
     category: str
     condition: Literal['Masih elok', 'Rosak / Tidak Berfungsi']
     description: Optional[str] = ""
+    userLocation: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    radiusKm: Optional[float] = None
 
 class SmartRecommendResponse(BaseModel):
     decision: Literal['Derma', 'Recycle', 'Jual']
@@ -166,6 +170,9 @@ class CommunityNotice(BaseModel):
     isImportant: bool = False
     imageUrl: Optional[str] = None
     createdAt: str
+    status: Optional[str] = "Approved"
+    authorId: Optional[str] = None
+    authorName: Optional[str] = None
 
 class CommunityNoticeCreate(BaseModel):
     title: str
@@ -178,6 +185,9 @@ class CommunityNoticeCreate(BaseModel):
     contactPerson: Optional[str] = None
     isImportant: Optional[bool] = False
     imageUrl: Optional[str] = None
+    status: Optional[str] = "Pending"
+    authorId: Optional[str] = None
+    authorName: Optional[str] = None
 
 class ChatMessage(BaseModel):
     id: str

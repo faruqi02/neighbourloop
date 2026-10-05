@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { CommunityNotice } from '../types';
 import { apiRequest } from '../services/api';
+import { useUserStore } from './useUserStore';
 
 interface NoticeState {
   notices: CommunityNotice[];
@@ -20,7 +21,9 @@ export const useNoticeStore = create<NoticeState>((set) => ({
   fetchNotices: async () => {
     set({ loading: true });
     try {
-      const data = await apiRequest<CommunityNotice[]>('/notices');
+      const currentUser = useUserStore.getState().currentUser;
+      const query = currentUser?.id ? `?user_id=${encodeURIComponent(currentUser.id)}` : '';
+      const data = await apiRequest<CommunityNotice[]>(`/notices${query}`);
       if (data && Array.isArray(data)) {
         set({ notices: data, loading: false });
       } else {
@@ -34,8 +37,20 @@ export const useNoticeStore = create<NoticeState>((set) => ({
   setSelectedCategory: (cat) => set({ selectedCategory: cat }),
 
   addNotice: async (noticeData) => {
-    const tempNotice: CommunityNotice = {
+    const currentUser = useUserStore.getState().currentUser;
+    const authorId = noticeData.authorId || currentUser?.id || 'u_user';
+    const authorName = noticeData.authorName || currentUser?.username || currentUser?.name || 'Penduduk';
+    const status = noticeData.status || 'Pending';
+
+    const fullNoticeData = {
       ...noticeData,
+      status,
+      authorId,
+      authorName,
+    };
+
+    const tempNotice: CommunityNotice = {
+      ...fullNoticeData,
       id: `not_${Date.now()}`,
       createdAt: 'Baru sahaja',
     };
@@ -44,7 +59,7 @@ export const useNoticeStore = create<NoticeState>((set) => ({
     try {
       const saved = await apiRequest<CommunityNotice>('/notices', {
         method: 'POST',
-        body: JSON.stringify(noticeData),
+        body: JSON.stringify(fullNoticeData),
       });
       if (saved) {
         set((state) => ({

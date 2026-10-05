@@ -60,7 +60,7 @@ export default function RecycleScreen() {
 
   useEffect(() => {
     fetchRecycleData();
-  }, []);
+  }, [currentUser?.location, currentUser?.lat, currentUser?.lng, currentUser?.radiusKm]);
 
   const [activeSubTab, setActiveSubTab] = useState<'SmartEngine' | 'Directory' | 'ClaimFeed'>('SmartEngine');
 
@@ -468,7 +468,7 @@ export default function RecycleScreen() {
             </View>
             <View className="absolute top-8 right-8 items-center">
               <MapPin size={26} color="#16a34a" />
-              <Text className="text-[10px] font-bold bg-white px-1.5 rounded shadow-xs">Kitar Semula JB</Text>
+              <Text className="text-[10px] font-bold bg-white px-1.5 rounded shadow-xs">Pusat Kitar Semula</Text>
             </View>
             <View className="absolute bottom-3 left-1/2 -ml-12 items-center">
               <MapPin size={24} color="#0284c7" />

@@ -92,6 +92,9 @@ export interface CommunityNotice {
   isImportant?: boolean;
   imageUrl?: string;
   createdAt?: string;
+  status?: 'Approved' | 'Pending' | 'Rejected' | string;
+  authorId?: string;
+  authorName?: string;
 }
 
 export interface AdminStats {

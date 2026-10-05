@@ -28,8 +28,16 @@ export const useRecycleStore = create<RecycleState>((set, get) => ({
   fetchRecycleData: async () => {
     set({ loading: true });
     try {
+      const currentUser = useUserStore.getState().currentUser;
+      const params = new URLSearchParams();
+      if (currentUser?.location) params.append('user_location', currentUser.location);
+      if (currentUser?.lat !== undefined) params.append('lat', String(currentUser.lat));
+      if (currentUser?.lng !== undefined) params.append('lng', String(currentUser.lng));
+      if (currentUser?.radiusKm) params.append('radius_km', String(currentUser.radiusKm));
+      const qs = params.toString() ? `?${params.toString()}` : '';
+
       const [fetchedCenters, fetchedDonations] = await Promise.all([
-        apiRequest<RecycleCenter[]>('/recycle/centers'),
+        apiRequest<RecycleCenter[]>(`/recycle/centers${qs}`),
         apiRequest<DonationItem[]>('/recycle/donations'),
       ]);
 

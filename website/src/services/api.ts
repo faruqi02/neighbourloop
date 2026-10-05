@@ -212,9 +212,9 @@ export const api = {
   },
 
   // --- Community Notices ---
-  getNotices: async (): Promise<CommunityNotice[]> => {
+  getNotices: async (status: string = 'all'): Promise<CommunityNotice[]> => {
     try {
-      const res = await fetch(`${API_URL}/notices`);
+      const res = await fetch(`${API_URL}/notices?status=${status}`);
       if (!res.ok) throw new Error('Network response was not ok');
       const data = await res.json();
       return Array.isArray(data) ? data : [];
@@ -231,6 +231,24 @@ export const api = {
       body: JSON.stringify(notice)
     });
     if (!res.ok) throw new Error('Network response was not ok');
+    return res.json();
+  },
+
+  approveNotice: async (id: string): Promise<CommunityNotice> => {
+    const res = await fetch(`${API_URL}/notices/${id}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Failed to approve notice');
+    return res.json();
+  },
+
+  rejectNotice: async (id: string): Promise<CommunityNotice> => {
+    const res = await fetch(`${API_URL}/notices/${id}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Failed to reject notice');
     return res.json();
   },
 

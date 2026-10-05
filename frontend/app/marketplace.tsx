@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -137,17 +137,57 @@ export default function MarketplaceScreen() {
     }, 150);
   };
 
-  const filteredListings = listings.filter((item) => {
-    const isBlocked = (item as any).isBlocked || (item as any).status === 'Disekat';
-    if (isBlocked && item.sellerId !== currentUser?.id) {
-      return false;
+  // Helper to calculate dynamic real-time distance using user GPS and item GPS, ignoring the stored distance column
+  const calculateDistance = (item: Listing): number => {
+    if (!currentUser) return 0.5;
+    if (item.sellerId === currentUser.id) return 0;
+
+    // 1. Direct item lat/lng
+    if (currentUser.lat != null && currentUser.lng != null && item.lat != null && item.lng != null) {
+      const R = 6371; // km
+      const dLat = (item.lat - currentUser.lat) * (Math.PI / 180);
+      const dLon = (item.lng - currentUser.lng) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(currentUser.lat * (Math.PI / 180)) * Math.cos(item.lat * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return Math.round(R * c * 10) / 10;
     }
-    const matchCat = selectedCategory === 'Semua' || item.category === selectedCategory;
-    const matchSearch = !search || 
-      item.title.toLowerCase().includes(search.toLowerCase()) || 
-      item.description.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
-  });
+
+    // 2. Fallback to seller's registered coordinates if item doesn't have lat/lng
+    const seller = allUsers.find((u) => u.id === item.sellerId);
+    if (currentUser.lat != null && currentUser.lng != null && seller?.lat != null && seller?.lng != null) {
+      const R = 6371;
+      const dLat = (seller.lat - currentUser.lat) * (Math.PI / 180);
+      const dLon = (seller.lng - currentUser.lng) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(currentUser.lat * (Math.PI / 180)) * Math.cos(seller.lat * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return Math.round(R * c * 10) / 10;
+    }
+
+    return 0.5;
+  };
+
+  const filteredListings = useMemo(() => {
+    const list = listings.filter((item) => {
+      const isBlocked = (item as any).isBlocked || (item as any).status === 'Disekat';
+      if (isBlocked && item.sellerId !== currentUser?.id) {
+        return false;
+      }
+      const matchCat = selectedCategory === 'Semua' || item.category === selectedCategory;
+      const matchSearch = !search || 
+        item.title.toLowerCase().includes(search.toLowerCase()) || 
+        item.description.toLowerCase().includes(search.toLowerCase());
+      return matchCat && matchSearch;
+    });
+
+    // Sort listings from nearest to farthest based on dynamic distance
+    return list.sort((a, b) => calculateDistance(a) - calculateDistance(b));
+  }, [listings, selectedCategory, search, currentUser, allUsers]);
 
   const handleCreateListing = async () => {
     if (!currentUser) return;
@@ -172,7 +212,9 @@ export default function MarketplaceScreen() {
         price: parseFloat(price) || 0,
         category,
         condition,
-        distance: 0.8,
+        lat: currentUser.lat,
+        lng: currentUser.lng,
+        distance: 0.5,
         imageUrl: selectedImage || PRESET_IMAGES[0],
         imageBase64: base64,
         sellerId: currentUser.id,
@@ -297,7 +339,7 @@ export default function MarketplaceScreen() {
           </View>
         ) : (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-            {filteredListings.map((item) => (
+            {filteredListings.map((item: Listing) => (
               <TouchableOpacity
                 key={item.id}
                 onPress={() => setSelectedListing(item)}
@@ -341,7 +383,7 @@ export default function MarketplaceScreen() {
                   <View className="absolute bottom-2 left-2 bg-black/60 px-2 py-0.5 rounded-full flex-row items-center">
                     <MapPin size={9} color="#cbd5e1" />
                     <Text className="text-[10px] text-white font-bold ml-0.5">
-                      {item.distance || 1.2} km
+                      {calculateDistance(item).toFixed(1)} km
                     </Text>
                   </View>
                 </View>
@@ -489,7 +531,7 @@ export default function MarketplaceScreen() {
                           <Text className="text-xs text-gray-600 ml-1">
                             {isSelectedMyItem 
                               ? `Lokasi jualan anda • Radius ${sellerUser?.radiusKm || currentUser?.radiusKm || 5} km`
-                              : `Radius Komuniti: ${sellerUser?.radiusKm || currentUser?.radiusKm || 5} km • ~${selectedListing.distance} km dari lokasi anda`
+                              : `distance : ${calculateDistance(selectedListing).toFixed(1)} KM`
                             }
                           </Text>
                         </View>

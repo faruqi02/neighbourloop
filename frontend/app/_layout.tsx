@@ -2,6 +2,8 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
+import * as Location from 'expo-location';
 import 'react-native-reanimated';
 import '../global.css';
 import { useUserStore } from '../store/useUserStore';
@@ -44,9 +46,66 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { currentUser } = useUserStore();
+  const { currentUser, updateLocation } = useUserStore();
   const segments = useSegments();
   const router = useRouter();
+
+  // Auto-detect user GPS location and sync with database whenever user opens the app
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    let isMounted = true;
+
+    const detectAndSyncLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        if (!isMounted) return;
+
+        const currentLat = loc.coords.latitude;
+        const currentLng = loc.coords.longitude;
+
+        let detectedName = currentUser.location || 'Lokasi Semasa';
+        try {
+          const geocode = await Location.reverseGeocodeAsync({
+            latitude: currentLat,
+            longitude: currentLng,
+          });
+          if (geocode && geocode.length > 0) {
+            const p = geocode[0];
+            detectedName = p.district || p.city || p.subregion || p.region || currentUser.location || 'Lokasi Semasa';
+          }
+        } catch (geoErr) {
+          // Keep existing or fallback name
+        }
+
+        if (!isMounted) return;
+
+        // Auto update state and persist to database via updateLocation (which calls /users/profile)
+        updateLocation(detectedName, currentUser.radiusKm || 5, currentLat, currentLng);
+      } catch (err) {
+        console.log('Auto location detection error:', err);
+      }
+    };
+
+    detectAndSyncLocation();
+
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        detectAndSyncLocation();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+    };
+  }, [currentUser?.id]);
 
   useEffect(() => {
     if (!segments) return;

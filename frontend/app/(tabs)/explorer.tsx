@@ -112,8 +112,8 @@ export default function ExplorerScreen() {
   };
 
   // Helper to calculate distance based on user lat/lng or fallback
-  const calculateDistance = (itemOwnerId?: string, fallbackDistance?: number): number => {
-    if (!itemOwnerId || !currentUser) {
+  const calculateDistance = (itemOwnerId?: string, fallbackDistance?: number, itemLat?: number, itemLng?: number): number => {
+    if (!currentUser) {
       return fallbackDistance !== undefined && !isNaN(Number(fallbackDistance))
         ? Number(fallbackDistance)
         : 0.5;
@@ -122,6 +122,20 @@ export default function ExplorerScreen() {
     // If current user is the owner, distance is 0 km
     if (itemOwnerId === currentUser.id) return 0;
 
+    // 1. Direct item coordinates (lat & lng from listing)
+    if (currentUser.lat != null && currentUser.lng != null && itemLat != null && itemLng != null) {
+      const R = 6371; // km
+      const dLat = (itemLat - currentUser.lat) * (Math.PI / 180);
+      const dLon = (itemLng - currentUser.lng) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(currentUser.lat * (Math.PI / 180)) * Math.cos(itemLat * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return Math.round(R * c * 10) / 10;
+    }
+
+    // 2. Owner profile coordinates fallback
     const owner = allUsers.find((u) => u.id === itemOwnerId);
     if (currentUser.lat && currentUser.lng && owner?.lat && owner?.lng) {
       const R = 6371; // km
@@ -144,7 +158,7 @@ export default function ExplorerScreen() {
   // Combine Marketplace, Recycle & Help Nearby into an unified explore feed, sorted nearest to furthest
   const allItems = useMemo(() => {
     const marketItems = (listings || []).map((l) => {
-      const dist = calculateDistance(l.sellerId, l.distance);
+      const dist = calculateDistance(l.sellerId, undefined, l.lat, l.lng);
       return {
         ...l,
         itemType: 'marketplace' as const,
@@ -800,7 +814,7 @@ export default function ExplorerScreen() {
                           <Text className="text-xs text-slate-600 ml-1">
                             {isSelectedMyItem
                               ? `Lokasi anda • Radius ${ownerUser?.radiusKm || currentUser?.radiusKm || 5} km`
-                              : `Radius Komuniti: ${ownerUser?.radiusKm || currentUser?.radiusKm || 5} km • ~${Number(selectedItem.distance || 0).toFixed(1)} km dari zon anda`
+                              : `distance : ${Number(selectedItem.distance || 0).toFixed(1)} KM`
                             }
                           </Text>
                         </View>

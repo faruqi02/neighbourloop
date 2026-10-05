@@ -51,7 +51,9 @@ class Listing(BaseModel):
     price: float
     category: Literal['Semua', 'Perabot', 'Elektronik', 'Pakaian', 'Lain-lain']
     condition: Literal['Baru', 'Seperti Baru', 'Terpakai'] = 'Terpakai'
-    distance: float
+    distance: float = 0.5
+    lat: Optional[float] = None
+    lng: Optional[float] = None
     imageUrl: str
     sellerId: str
     sellerName: str
@@ -74,6 +76,8 @@ class ListingCreate(BaseModel):
     sellerPhone: Optional[str] = None
     sellerContactNotes: Optional[str] = None
     distance: Optional[float] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
 class RecycleCenter(BaseModel):
     id: str

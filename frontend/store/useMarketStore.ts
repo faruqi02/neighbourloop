@@ -19,7 +19,12 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   fetchListings: async () => {
     set({ loading: true });
     try {
-      const data = await apiRequest<Listing[]>('/marketplace');
+      const currentUser = useUserStore.getState().currentUser;
+      let url = '/marketplace';
+      if (currentUser?.lat != null && currentUser?.lng != null) {
+        url += `?user_lat=${currentUser.lat}&user_lng=${currentUser.lng}`;
+      }
+      const data = await apiRequest<Listing[]>(url);
       if (data && Array.isArray(data)) {
         set({ listings: data, loading: false });
       } else {
@@ -34,10 +39,14 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     const currentUser = useUserStore.getState().currentUser;
     const userId = currentUser ? currentUser.id : 'u1';
     const sellerUsername = (listingData.sellerName || currentUser?.username || currentUser?.name || 'Jiran').replace(/^@/, '');
+    const finalLat = listingData.lat ?? currentUser?.lat;
+    const finalLng = listingData.lng ?? currentUser?.lng;
 
     // Optimistic UI update
     const tempListing: Listing = {
       ...listingData,
+      lat: finalLat,
+      lng: finalLng,
       sellerName: sellerUsername,
       sellerId: userId,
       id: `l_${Date.now()}`,
@@ -60,7 +69,8 @@ export const useMarketStore = create<MarketState>((set, get) => ({
           sellerName: sellerUsername,
           sellerPhone: listingData.sellerPhone,
           sellerContactNotes: listingData.sellerContactNotes,
-          distance: listingData.distance,
+          lat: finalLat,
+          lng: finalLng,
         }),
       });
 

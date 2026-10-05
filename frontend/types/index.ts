@@ -22,6 +22,8 @@ export interface Listing {
   category: 'Semua' | 'Perabot' | 'Elektronik' | 'Pakaian' | 'Lain-lain';
   condition: 'Baru' | 'Seperti Baru' | 'Terpakai';
   distance: number;
+  lat?: number;
+  lng?: number;
   imageUrl: string;
   sellerId: string;
   sellerName: string;

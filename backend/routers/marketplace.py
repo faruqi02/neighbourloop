@@ -1,4 +1,5 @@
 import time
+import math
 import uuid
 import requests
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
@@ -15,6 +16,17 @@ MARKET_CACHE = {
 }
 CACHE_TTL = 5.0  # 5 seconds fast cache
 
+def calculate_haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    try:
+        R = 6371.0
+        dlat = math.radians(float(lat2) - float(lat1))
+        dlon = math.radians(float(lon2) - float(lon1))
+        a = math.sin(dlat / 2)**2 + math.cos(math.radians(float(lat1))) * math.cos(math.radians(float(lat2))) * math.sin(dlon / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return round(R * c, 1)
+    except Exception:
+        return 0.5
+
 def sync_save_to_gas(payload: dict):
     try:
         requests.post(APPS_SCRIPT_URL, json=payload, timeout=60.0)
@@ -25,7 +37,9 @@ def sync_save_to_gas(payload: dict):
 def get_listings(
     category: Optional[str] = Query(None, description="Filter by category"),
     search: Optional[str] = Query(None, description="Search keyword"),
-    max_distance: Optional[float] = Query(None, description="Max radius in km")
+    max_distance: Optional[float] = Query(None, description="Max radius in km"),
+    user_lat: Optional[float] = Query(None, description="User current latitude"),
+    user_lng: Optional[float] = Query(None, description="User current longitude")
 ):
     now = time.time()
     if (now - MARKET_CACHE["last_fetched"] > CACHE_TTL) or not MARKET_CACHE["data"]:
@@ -44,11 +58,18 @@ def get_listings(
                         except Exception:
                             price = 0.0
 
-                        raw_dist = d.get("distance", 1.0)
+                        # Ignore the distance column from sheet. Read lat and lng instead.
+                        raw_lat = d.get("lat")
                         try:
-                            dist = float(raw_dist) if raw_dist != "" else 1.0
+                            item_lat = float(raw_lat) if raw_lat is not None and str(raw_lat).strip() != "" else None
                         except Exception:
-                            dist = 1.0
+                            item_lat = None
+
+                        raw_lng = d.get("lng")
+                        try:
+                            item_lng = float(raw_lng) if raw_lng is not None and str(raw_lng).strip() != "" else None
+                        except Exception:
+                            item_lng = None
 
                         cat = d.get("category") or "Lain-lain"
                         if cat not in ['Semua', 'Perabot', 'Elektronik', 'Pakaian', 'Lain-lain']:
@@ -72,7 +93,9 @@ def get_listings(
                             price=price,
                             category=cat,
                             condition=cond,
-                            distance=dist,
+                            distance=0.5,
+                            lat=item_lat,
+                            lng=item_lng,
                             imageUrl=str(d.get("imageUrl") or "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400"),
                             sellerId=str(d.get("sellerId") or "u1"),
                             sellerName=str(d.get("sellerName") or "Jiran"),
@@ -90,7 +113,16 @@ def get_listings(
         except Exception as e:
             print(f"Error fetching listings: {e}")
 
-    results = list(MARKET_CACHE["data"])
+    results = [item.model_copy() for item in MARKET_CACHE["data"]]
+
+    # Dynamically calculate distance from user coordinates to item coordinates
+    if user_lat is not None and user_lng is not None:
+        for item in results:
+            if item.lat is not None and item.lng is not None:
+                item.distance = calculate_haversine(user_lat, user_lng, item.lat, item.lng)
+        # Sort nearest to farthest
+        results.sort(key=lambda x: x.distance)
+
     if category and category != "Semua":
         results = [item for item in results if item.category.lower() == category.lower()]
     if search:
@@ -169,6 +201,8 @@ def create_listing(data: ListingCreate, background_tasks: BackgroundTasks, user_
         "category": data.category,
         "condition": data.condition,
         "distance": dist,
+        "lat": data.lat,
+        "lng": data.lng,
         "imageUrl": img_url,
         "sellerId": seller_id,
         "sellerName": seller_name,

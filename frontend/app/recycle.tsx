@@ -203,10 +203,12 @@ export default function RecycleScreen() {
     Linking.openURL(`tel:${phone}`);
   };
 
-  const filteredCenters = centers.filter((c) => {
-    if (centerTypeFilter === 'Semua') return true;
-    return c.type === centerTypeFilter;
-  });
+  const filteredCenters = centers
+    .filter((c) => {
+      if (centerTypeFilter === 'Semua') return true;
+      return c.type === centerTypeFilter;
+    })
+    .sort((a, b) => (Number(a.distance) || 0) - (Number(b.distance) || 0));
 
   if (!currentUser) return null;
 

@@ -11,6 +11,9 @@ interface Props {
 }
 
 const PRESET_LOCATIONS = [
+  'Taman Pelangi, JB',
+  'Skudai, Johor Bahru',
+  'Taman Universiti, Skudai',
   'Behrang Stesen',
   'Behrang Sentral',
   'Behrang Residen',
@@ -20,6 +23,9 @@ const PRESET_LOCATIONS = [
 ];
 
 const PRESET_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  'Taman Pelangi, JB': { lat: 1.4815, lng: 103.7712 },
+  'Skudai, Johor Bahru': { lat: 1.5366, lng: 103.6599 },
+  'Taman Universiti, Skudai': { lat: 1.5366, lng: 103.6599 },
   'Behrang Stesen': { lat: 3.7485, lng: 101.4497 },
   'Behrang Sentral': { lat: 3.7512, lng: 101.4551 },
   'Behrang Residen': { lat: 3.7450, lng: 101.4600 },

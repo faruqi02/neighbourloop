@@ -138,6 +138,28 @@ BEHRANG_TM_CENTERS = [
 
 JOHOR_CENTERS = [
     RecycleCenter(
+        id="c_jb_pelangi",
+        name="Pusat Kitar Semula Komuniti Taman Pelangi JB",
+        type="RecycleCenter",
+        address="Jalan Kuning, Taman Pelangi, 80400 Johor Bahru, Johor",
+        distance=0.8,
+        contactPhone="07-3331234",
+        operatingHours="Isnin - Sabtu: 8:00 AM - 5:00 PM",
+        coordinates={"latitude": 1.4815, "longitude": 103.7712},
+        typesAccepted=["Kertas & Buku", "Plastik", "Logam & Besi", "Kaca", "Pakaian & Tekstil"]
+    ),
+    RecycleCenter(
+        id="c_jb_ngo_pelangi",
+        name="Pertubuhan Kebajikan & Pusat Derma Prihatin Pelangi",
+        type="NGO",
+        address="Jalan Serampang, Taman Pelangi, 80400 Johor Bahru, Johor",
+        distance=1.1,
+        contactPhone="012-7890123",
+        operatingHours="Selasa - Ahad: 10:00 AM - 5:00 PM",
+        coordinates={"latitude": 1.4852, "longitude": 103.7680},
+        typesAccepted=["Pakaian & Tekstil", "Buku", "Perabot & Rumah", "Barangan Dapur"]
+    ),
+    RecycleCenter(
         id="c1",
         name="Pusat Kitar Semula Komuniti Skudai",
         type="RecycleCenter",
@@ -183,7 +205,9 @@ JOHOR_CENTERS = [
     )
 ]
 
-DEFAULT_CENTERS = DAMANSARA_PJ_CENTERS
+ALL_SYSTEM_CENTERS = DAMANSARA_PJ_CENTERS + BEHRANG_TM_CENTERS + JOHOR_CENTERS
+
+DEFAULT_CENTERS = JOHOR_CENTERS
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     import math
@@ -201,71 +225,44 @@ def resolve_centers_for_user(
     radius_km: Optional[float] = None
 ) -> List[RecycleCenter]:
     loc_lower = (user_location or "").lower()
-    selected_centers: List[RecycleCenter] = []
 
-    if any(k in loc_lower for k in ["damansara", "petaling", "pj", "kelana", "subang", "shah alam", "selangor", "kl", "kuala lumpur", "pelangi"]):
-        selected_centers = [c.copy() for c in DAMANSARA_PJ_CENTERS]
+    # 1. If GPS coordinates (lat, lng) are provided, calculate exact distance to ALL known centers in the system
+    # and return only the nearest centers, sorted strictly from nearest to farthest!
+    if lat is not None and lng is not None and not (lat == 0 and lng == 0):
+        centers_with_dist = []
+        for c in ALL_SYSTEM_CENTERS:
+            c_copy = c.copy()
+            if c_copy.coordinates and "latitude" in c_copy.coordinates and "longitude" in c_copy.coordinates:
+                c_copy.distance = haversine_distance(lat, lng, c_copy.coordinates["latitude"], c_copy.coordinates["longitude"])
+                centers_with_dist.append(c_copy)
+        
+        # Sort strictly from nearest to farthest
+        centers_with_dist.sort(key=lambda x: x.distance)
+
+        # If the nearest center is reasonably close (e.g. within 50km or radius_km), filter by radius
+        limit_r = radius_km if (radius_km and radius_km > 0) else 50.0
+        nearby = [c for c in centers_with_dist if c.distance <= limit_r]
+        if nearby:
+            return nearby
+        # Otherwise return the closest 5 centers so the user always sees the nearest ones
+        return centers_with_dist[:5]
+
+    # 2. If no GPS coordinates, resolve based on location text
+    # Check Johor / JB / Pelangi first (matches Taman Pelangi, Johor Bahru, Skudai, etc.)
+    if any(k in loc_lower for k in ["pelangi", "johor", "jb", "skudai", "iskandar", "pulai", "tebrau", "stulang", "tampoi"]):
+        selected = [c.copy() for c in JOHOR_CENTERS]
     elif any(k in loc_lower for k in ["behrang", "tanjung malim", "slim river", "muallim", "perak"]):
-        selected_centers = [c.copy() for c in BEHRANG_TM_CENTERS]
-    elif any(k in loc_lower for k in ["skudai", "johor", "jb", "iskandar", "pulai"]):
-        selected_centers = [c.copy() for c in JOHOR_CENTERS]
+        selected = [c.copy() for c in BEHRANG_TM_CENTERS]
+    elif any(k in loc_lower for k in ["damansara", "petaling", "pj", "kelana", "subang", "shah alam", "selangor", "kl", "kuala lumpur"]):
+        selected = [c.copy() for c in DAMANSARA_PJ_CENTERS]
     else:
-        clean_loc = (user_location or "Kawasan Anda").strip()
-        selected_centers = [
-            RecycleCenter(
-                id=f"c_loc_1_{abs(hash(clean_loc))%1000}",
-                name=f"Pusat Kitar Semula Komuniti {clean_loc}",
-                type="RecycleCenter",
-                address=f"Pusat Kitar Semula Setempat, {clean_loc}",
-                distance=1.1,
-                contactPhone="03-88881234",
-                operatingHours="Isnin - Sabtu: 8:00 AM - 5:00 PM",
-                coordinates={"latitude": lat or 3.15, "longitude": lng or 101.6},
-                typesAccepted=["Kertas & Buku", "Plastik", "Logam & Besi", "Kaca", "Pakaian & Tekstil"]
-            ),
-            RecycleCenter(
-                id=f"c_loc_2_{abs(hash(clean_loc))%1000}",
-                name=f"Pusat Pengumpulan E-Waste & Logam {clean_loc}",
-                type="RecycleCenter",
-                address=f"Hab Pemulihan Elektronik Sekitar {clean_loc}",
-                distance=2.4,
-                contactPhone="03-88885678",
-                operatingHours="Setiap Hari: 9:00 AM - 6:00 PM",
-                coordinates={"latitude": lat or 3.15, "longitude": lng or 101.6},
-                typesAccepted=["E-waste & Elektronik", "Logam & Besi"]
-            ),
-            RecycleCenter(
-                id=f"c_loc_3_{abs(hash(clean_loc))%1000}",
-                name=f"Pertubuhan Kebajikan & Derma Prihatin {clean_loc}",
-                type="NGO",
-                address=f"Pusat Komuniti & Kebajikan, {clean_loc}",
-                distance=1.6,
-                contactPhone="012-7766554",
-                operatingHours="Selasa - Ahad: 10:00 AM - 4:00 PM",
-                coordinates={"latitude": lat or 3.15, "longitude": lng or 101.6},
-                typesAccepted=["Pakaian & Tekstil", "Buku", "Perabot & Rumah"]
-            ),
-            RecycleCenter(
-                id=f"c_loc_4_{abs(hash(clean_loc))%1000}",
-                name=f"Pusat Jagaan Kasih & Sumbangan Rezeki {clean_loc}",
-                type="NGO",
-                address=f"Pusat Agihan Komuniti Sekitar {clean_loc}",
-                distance=2.0,
-                contactPhone="011-99887766",
-                operatingHours="Isnin - Jumaat: 9:00 AM - 5:00 PM",
-                coordinates={"latitude": lat or 3.15, "longitude": lng or 101.6},
-                typesAccepted=["Pakaian & Tekstil", "Barangan Dapur", "Alat Tulis"]
-            )
-        ]
+        # Default fallback to Johor centers if user didn't specify
+        clean_loc = (user_location or "Johor Bahru").strip()
+        selected = [c.copy() for c in JOHOR_CENTERS]
 
-    # Recalculate distance if user provided lat and lng
-    if lat is not None and lng is not None:
-        for c in selected_centers:
-            if c.coordinates and "latitude" in c.coordinates and "longitude" in c.coordinates:
-                c.distance = haversine_distance(lat, lng, c.coordinates["latitude"], c.coordinates["longitude"])
-        selected_centers.sort(key=lambda x: x.distance)
-
-    return selected_centers
+    # Sort ascending by distance (nearest to farthest)
+    selected.sort(key=lambda x: x.distance)
+    return selected
 
 def sync_save_to_gas(payload: dict):
     try:

@@ -62,9 +62,9 @@ def format_gas_created(val: str) -> str:
 
 @router.get("", response_model=List[CommunityNotice])
 def get_community_notices(
-    category: Optional[str] = Query(None, description="Category filter"),
-    status: Optional[str] = Query(None, description="Status filter: Approved, Pending, or all"),
-    user_id: Optional[str] = Query(None, description="User ID to include own pending notices")
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    user_id: Optional[str] = None
 ):
     now = time.time()
     if (now - NOTICES_CACHE["last_fetched"] > CACHE_TTL) or not NOTICES_CACHE["data"]:
@@ -189,6 +189,15 @@ def approve_community_notice(notice_id: str, background_tasks: BackgroundTasks):
             break
 
     if not target:
+        # If cache cold, fetch once
+        get_community_notices(status="all")
+        for n in NOTICES_CACHE["data"]:
+            if n.id == notice_id:
+                n.status = "Approved"
+                target = n
+                break
+
+    if not target:
         raise HTTPException(status_code=404, detail="Notice not found")
 
     background_tasks.add_task(sync_save_to_gas, {
@@ -208,6 +217,15 @@ def reject_community_notice(notice_id: str, background_tasks: BackgroundTasks):
             n.status = "Rejected"
             target = n
             break
+
+    if not target:
+        # If cache cold, fetch once
+        get_community_notices(status="all")
+        for n in NOTICES_CACHE["data"]:
+            if n.id == notice_id:
+                n.status = "Rejected"
+                target = n
+                break
 
     if not target:
         raise HTTPException(status_code=404, detail="Notice not found")

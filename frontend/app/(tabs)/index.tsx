@@ -9,7 +9,9 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
-  Alert
+  Alert,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/useUserStore';
@@ -381,20 +383,31 @@ export default function HomeDashboard() {
       {/* Modal Cipta Notis Komuniti Baharu (Boleh Dibuat Secara Umum) */}
       <Modal visible={addNoticeModalVisible} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView className="flex-1 bg-white">
-          <View className="px-5 py-4 border-b border-gray-100 flex-row justify-between items-center">
-            <View>
-              <Text className="text-lg font-black text-gray-900">Kongsi Informasi Komuniti</Text>
-              <Text className="text-xs text-gray-500">Hebahan, aktiviti atau notis kejiranan</Text>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={{ flex: 1 }}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
+          >
+            <View className="px-5 py-4 border-b border-gray-100 flex-row justify-between items-center">
+              <View>
+                <Text className="text-lg font-black text-gray-900">Kongsi Informasi Komuniti</Text>
+                <Text className="text-xs text-gray-500">Hebahan, aktiviti atau notis kejiranan</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setAddNoticeModalVisible(false)} 
+                className="p-1.5 bg-gray-100 rounded-full"
+              >
+                <X size={20} color="#4b5563" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              onPress={() => setAddNoticeModalVisible(false)} 
-              className="p-1.5 bg-gray-100 rounded-full"
-            >
-              <X size={20} color="#4b5563" />
-            </TouchableOpacity>
-          </View>
 
-          <ScrollView className="flex-1 px-5 pt-3" showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              className="flex-1 px-5 pt-3" 
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets={true}
+              contentContainerStyle={{ paddingBottom: 250 }}
+            >
             {/* Info Review Alert */}
             <View className="bg-amber-50 p-3.5 rounded-2xl mb-4 border border-amber-200 flex-row items-start">
               <Clock size={16} color="#b45309" className="mt-0.5" />
@@ -537,6 +550,7 @@ export default function HomeDashboard() {
               )}
             </TouchableOpacity>
           </ScrollView>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 

@@ -40,8 +40,10 @@ export interface RecycleCenter {
   distance: number;
   operatingHours: string;
   coordinates: {
-    lat: number;
-    lng: number;
+    lat?: number;
+    lng?: number;
+    latitude?: number;
+    longitude?: number;
   };
   typesAccepted: string[];
   contactPhone?: string;

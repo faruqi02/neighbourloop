@@ -32,6 +32,7 @@ import { SmartRecommendation, RecycleCenter, DonationItem } from '../types';
 import SuccessModal from '../components/SuccessModal';
 import ImagePickerButton from '../components/ImagePickerButton';
 import ChatModal from '../components/ChatModal';
+import LeafletSatelliteMap from '../components/LeafletSatelliteMap';
 
 const recycleIcon = require('../images/recycle_icon.png');
 
@@ -460,25 +461,16 @@ export default function RecycleScreen() {
             ))}
           </View>
 
-          {/* Interactive Map Visual with Custom Icon */}
-          <View className="bg-emerald-50 rounded-2xl h-36 mb-4 relative overflow-hidden items-center justify-center border border-emerald-200">
-            <View className="absolute top-4 left-6 items-center">
-              <MapPin size={26} color="#9333ea" />
-              <Text className="text-[10px] font-bold bg-white px-1.5 rounded shadow-xs">NGO Prihatin</Text>
-            </View>
-            <View className="absolute top-8 right-8 items-center">
-              <MapPin size={26} color="#16a34a" />
-              <Text className="text-[10px] font-bold bg-white px-1.5 rounded shadow-xs">Pusat Kitar Semula</Text>
-            </View>
-            <View className="absolute bottom-3 left-1/2 -ml-12 items-center">
-              <MapPin size={24} color="#0284c7" />
-              <Text className="text-[10px] font-bold bg-white px-1.5 rounded shadow-xs">E-Waste Hub</Text>
-            </View>
-            <View className="bg-white/95 px-3.5 py-1.5 rounded-full shadow-sm flex-row items-center border border-emerald-200">
-              <Image source={recycleIcon} className="w-4 h-4 mr-1.5" resizeMode="contain" />
-              <Text className="text-gray-800 text-xs font-bold">Fasiliti Sekitar {currentUser.location} ({currentUser.radiusKm || 5} km)</Text>
-            </View>
-          </View>
+          {/* Real Interactive Satellite Map (Leaflet & Esri Satellite) */}
+          <LeafletSatelliteMap
+            userLat={currentUser.lat || 3.1517}
+            userLng={currentUser.lng || 101.5947}
+            userLocationName={currentUser.location}
+            radiusKm={currentUser.radiusKm || 5}
+            centers={filteredCenters}
+            onSelectCenter={(c) => setSelectedCenter(c)}
+            height={220}
+          />
 
           {/* Centers List */}
           {filteredCenters.map((center) => (

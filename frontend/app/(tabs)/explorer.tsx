@@ -686,7 +686,7 @@ export default function ExplorerScreen() {
                     >
                       {selectedItem.isHelp 
                         ? (selectedItem.type === 'Permintaan' ? 'Permintaan Bantuan' : 'Tawaran Bantuan')
-                        : (selectedItem.isDonation ? 'Barang Sumbangan' : 'Marketplace Jiran')}
+                        : (selectedItem.isDonation ? 'Barang Sumbangan' : 'Marketplace')}
                     </Text>
                   </View>
                   <Text className="text-xs text-slate-400 font-bold">{selectedItem.category}</Text>

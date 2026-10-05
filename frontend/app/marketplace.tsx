@@ -215,7 +215,7 @@ export default function MarketplaceScreen() {
           <TouchableOpacity onPress={() => router.back()} className="mr-3 p-1.5 -ml-1 bg-gray-100 rounded-full">
             <ChevronLeft size={24} color="#111827" />
           </TouchableOpacity>
-          <Text className="text-2xl font-black text-gray-900">Marketplace Jiran</Text>
+          <Text className="text-2xl font-black text-gray-900">Marketplace</Text>
         </View>
 
         {/* Search Bar */}

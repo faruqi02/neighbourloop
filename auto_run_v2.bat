@@ -34,28 +34,25 @@ for /f "tokens=*" %%i in ('python -c "import socket; s = socket.socket(socket.AF
 if not defined HOST_IP set HOST_IP=192.168.100.129
 echo [INFO] IP Rangkaian Dikesan untuk Expo Go: %HOST_IP%
 
-echo Membuka kesemua 4 panel servis bersebelahan dalam satu tetingkap...
+echo Membuka kesemua 3 panel servis bersebelahan dalam satu tetingkap...
 
-:: 3. Lancarkan keempat-empat panel dalam satu tetingkap Windows Terminal:
+:: 3. Lancarkan ketiga-tiga panel dalam satu tetingkap Windows Terminal:
 ::    - Panel 1: Backend (FastAPI)
 ::    - Panel 2: Frontend (Expo Go)
 ::    - Panel 3: Admin Website (Vite)
-::    - Panel 4: Web QR (Cloudflare Tunnel + QR Code untuk Telefon)
 start "" wt -M ^
   new-tab --title "Backend (FastAPI)" cmd /k "cd /d "%~dp0backend" && call venv\Scripts\activate.bat && echo ======================================== && echo  NeighbourLoop Backend (FastAPI) is Running! && echo  - API Base URL: http://127.0.0.1:8000 && echo  - LAN URL:      http://%HOST_IP%:8000 && echo  - Swagger Docs: http://127.0.0.1:8000/docs && echo ======================================== && echo. && uvicorn main:app --reload --host 0.0.0.0 --port 8000" ; ^
   split-pane -V --size 0.66 --title "Frontend (Expo)" cmd /k "timeout /t 2 /nobreak >nul && cd /d "%~dp0frontend" && set REACT_NATIVE_PACKAGER_HOSTNAME=%HOST_IP% && echo ======================================== && echo  NeighbourLoop Frontend (Expo) is Starting... && echo  - Host IP: %HOST_IP%:8081 && echo  - Imbas Kod QR dengan aplikasi Expo Go && echo ======================================== && echo. && npx expo start -c" ; ^
-  split-pane -V --size 0.50 --title "Admin Website" cmd /k "timeout /t 4 /nobreak >nul && cd /d "%~dp0website" && echo ======================================== && echo  NeighbourLoop Admin Website (Vite) is Starting... && echo  - URL: http://localhost:5173 && echo ======================================== && echo. && npm run dev -- --host" ; ^
-  split-pane -H --title "Web QR (Cloudflare)" cmd /k "timeout /t 5 /nobreak >nul && chcp 65001 >nul && cd /d "%~dp0" && call "%~dp0backend\venv\Scripts\activate.bat" && python "%~dp0share_web.py""
+  split-pane -V --size 0.50 --title "Admin Website" cmd /k "timeout /t 4 /nobreak >nul && cd /d "%~dp0website" && echo ======================================== && echo  NeighbourLoop Admin Website (Vite) is Starting... && echo  - URL: http://localhost:5173 && echo ======================================== && echo. && npm run dev -- --host"
 
 echo.
 echo ==============================================================================
-echo [BERJAYA] Keempat-empat servis telah dibuka dalam satu tetingkap bersebelahan!
+echo [BERJAYA] Ketiga-tiga servis telah dibuka dalam satu tetingkap bersebelahan!
 echo ==============================================================================
 echo.
-echo  * Backend API:       http://127.0.0.1:8000
-echo  * Swagger Docs:      http://127.0.0.1:8000/docs
-echo  * Frontend Expo:     Lihat tetingkap Expo untuk kod QR Expo Go
-echo  * Admin Website:     http://localhost:5173
-echo  * Web QR Cloudflare: Lihat tetingkap Web QR / imbas qr_web.png dari telefon
+echo  * Backend API:   http://127.0.0.1:8000
+echo  * Swagger Docs:  http://127.0.0.1:8000/docs
+echo  * Frontend Expo: Imbas kod QR pada panel Expo menggunakan Expo Go (%HOST_IP%:8081)
+echo  * Admin Website: http://localhost:5173
 echo.
 pause

@@ -103,9 +103,12 @@ export interface ChatConversation {
   participantName: string;
   participantAvatar?: string;
   participantPhone?: string;
+  itemContextId?: string;
   itemContextTitle?: string;
   itemContextPrice?: number;
   itemContextCategory?: string;
+  itemContextImage?: string;
+  itemContextCondition?: string;
   lastMessage: string;
   lastMessageTime: string;
   unreadCount?: number;

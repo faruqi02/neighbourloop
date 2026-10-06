@@ -34,9 +34,9 @@ export default function ChatScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="px-5 pt-3 pb-4 bg-emerald-600">
-        <Text className="text-2xl font-black text-white text-center">Chatbox Jiran</Text>
+        <Text className="text-2xl font-black text-white text-center">Chatbox Komuniti</Text>
         <Text className="text-emerald-100 text-xs text-center mt-0.5">
-          Berhubung terus dengan jiran berdekatan
+          Berhubung terus untuk urusan barang atau bantuan
         </Text>
       </View>
       <View className="flex-1 bg-gray-50 -mt-3 rounded-t-3xl">
@@ -64,7 +64,7 @@ export default function ChatScreen() {
               </View>
               <Text className="text-lg font-bold text-gray-900 mb-2">Tiada Mesej Baru</Text>
               <Text className="text-center text-gray-500 text-sm px-4">
-                Setiap perbualan dari Marketplace, Bantuan atau Derma akan dipaparkan di sini.
+                Setiap perbualan dari Marketplace, Bantuan atau Derma akan dipaparkan di sini mengikut setiap barang.
               </Text>
             </View>
           ) : (
@@ -72,15 +72,32 @@ export default function ChatScreen() {
               <TouchableOpacity
                 key={conv.id}
                 onPress={() => setSelectedConversation(conv)}
-                className="bg-white p-4 rounded-2xl mb-3 border border-gray-100 shadow-sm flex-row items-center"
+                className="bg-white p-3.5 rounded-2xl mb-3 border border-gray-100 shadow-sm flex-row items-center"
               >
-                <Image
-                  source={{ uri: conv.participantAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150' }}
-                  className="w-13 h-13 rounded-full mr-3.5 bg-gray-200 border border-gray-100"
-                  style={{ width: 50, height: 50, borderRadius: 25 }}
-                />
+                <View className="relative mr-3">
+                  <Image
+                    source={{ uri: conv.participantAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150' }}
+                    style={{ width: 48, height: 48, borderRadius: 24 }}
+                    className="bg-gray-200 border border-gray-100"
+                  />
+                  {conv.itemContextImage ? (
+                    <Image
+                      source={{ uri: conv.itemContextImage }}
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 6,
+                        position: 'absolute',
+                        bottom: -2,
+                        right: -2,
+                        borderWidth: 1.5,
+                        borderColor: '#ffffff',
+                      }}
+                    />
+                  ) : null}
+                </View>
                 <View className="flex-1 mr-2">
-                  <View className="flex-row justify-between items-center mb-1">
+                  <View className="flex-row justify-between items-center mb-0.5">
                     <Text className="text-sm font-bold text-gray-900" numberOfLines={1}>
                       {conv.participantName}
                     </Text>
@@ -90,11 +107,20 @@ export default function ChatScreen() {
                     </View>
                   </View>
                   {conv.itemContextTitle ? (
-                    <View className="flex-row items-center bg-green-50 self-start px-2 py-0.5 rounded-md mb-1.5 border border-green-100">
-                      <Tag size={10} color="#16a34a" />
-                      <Text className="text-[10px] font-bold text-green-800 ml-1" numberOfLines={1}>
+                    <View className="flex-row items-center bg-emerald-50 self-start px-2 py-0.5 rounded-md mb-1 border border-emerald-100 max-w-[95%]">
+                      <Tag size={10} color="#059669" />
+                      <Text className="text-[10px] font-bold text-emerald-800 ml-1 mr-1.5" numberOfLines={1}>
                         {conv.itemContextTitle}
                       </Text>
+                      {conv.itemContextPrice != null && Number(conv.itemContextPrice) > 0 ? (
+                        <Text className="text-[10px] font-black text-emerald-700">
+                          RM{Number(conv.itemContextPrice).toFixed(0)}
+                        </Text>
+                      ) : conv.itemContextPrice === 0 ? (
+                        <Text className="text-[9px] font-bold text-purple-700">
+                          Percuma
+                        </Text>
+                      ) : null}
                     </View>
                   ) : null}
                   <View className="flex-row justify-between items-center">
@@ -133,9 +159,12 @@ export default function ChatScreen() {
           itemContext={
             selectedConversation.itemContextTitle
               ? {
+                  id: selectedConversation.itemContextId,
                   title: selectedConversation.itemContextTitle,
                   price: selectedConversation.itemContextPrice != null ? Number(selectedConversation.itemContextPrice) : undefined,
                   category: selectedConversation.itemContextCategory,
+                  imageUrl: selectedConversation.itemContextImage,
+                  condition: selectedConversation.itemContextCondition,
                 }
               : undefined
           }

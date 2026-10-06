@@ -103,8 +103,12 @@ export default function HelpScreen() {
     radiusKm?: number;
   } | null>(null);
   const [activeChatContext, setActiveChatContext] = useState<{ 
+    id?: string;
     title: string; 
     category?: string;
+    imageUrl?: string;
+    condition?: string;
+    price?: number;
     distance?: number;
     radiusKm?: number;
   } | null>(null);
@@ -128,8 +132,12 @@ export default function HelpScreen() {
       radiusKm: requester?.radiusKm || currentUser?.radiusKm || 5,
     };
     const context = {
+      id: selectedRequest.id,
       title: selectedRequest.title,
-      category: 'Help Nearby',
+      category: 'Help Nearby - ' + (selectedRequest.category || 'Bantuan'),
+      imageUrl: selectedRequest.imageUrl,
+      condition: selectedRequest.type,
+      price: 0,
       distance: selectedRequest.distance,
       radiusKm: requester?.radiusKm || currentUser?.radiusKm || 5,
     };

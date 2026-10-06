@@ -81,9 +81,12 @@ export default function ExplorerScreen() {
     radiusKm?: number;
   } | null>(null);
   const [activeChatContext, setActiveChatContext] = useState<{
+    id?: string;
     title: string;
     price?: number;
     category?: string;
+    imageUrl?: string;
+    condition?: string;
     distance?: number;
     radiusKm?: number;
   } | null>(null);
@@ -317,9 +320,12 @@ export default function ExplorerScreen() {
       radiusKm: seller?.radiusKm || currentUser?.radiusKm || 5,
     });
     setActiveChatContext({
+      id: item.id,
       title: item.title,
       price: item.isDonation ? 0 : Number(item.price),
       category: item.category,
+      imageUrl: item.imageUrl,
+      condition: item.condition || item.badgeText || (item.isDonation ? 'Percuma' : undefined),
       distance: item.distance,
       radiusKm: seller?.radiusKm || currentUser?.radiusKm || 5,
     });

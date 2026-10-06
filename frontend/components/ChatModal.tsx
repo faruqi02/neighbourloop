@@ -30,9 +30,12 @@ interface ChatModalProps {
     radiusKm?: number;
   };
   itemContext?: {
+    id?: string;
     title: string;
-    price?: number;
+    price?: number | string;
     category?: string;
+    imageUrl?: string;
+    condition?: string;
     distance?: number;
     radiusKm?: number;
   };
@@ -125,6 +128,18 @@ export default function ChatModal({
     };
   }, []);
 
+  const currentConv = conversations.find((c) => c.id === conversationId);
+  const messages = currentConv?.messages || [];
+
+  const activeItem = itemContext || (currentConv?.itemContextTitle ? {
+    id: currentConv.itemContextId,
+    title: currentConv.itemContextTitle,
+    price: currentConv.itemContextPrice,
+    category: currentConv.itemContextCategory,
+    imageUrl: currentConv.itemContextImage,
+    condition: currentConv.itemContextCondition,
+  } : undefined);
+
   useEffect(() => {
     if (visible && recipient.id) {
       const convId = getOrCreateConversation(
@@ -134,15 +149,21 @@ export default function ChatModal({
           avatarUrl: recipient.avatarUrl || sellerUser?.avatarUrl,
           phone: recipient.phone || sellerUser?.phone,
         }, 
-        ctxTitle ? { title: ctxTitle, price: ctxPrice, category: ctxCategory } : undefined
+        activeItem
+          ? {
+              id: activeItem.id,
+              title: activeItem.title,
+              price: activeItem.price !== undefined ? Number(activeItem.price) : undefined,
+              category: activeItem.category,
+              imageUrl: activeItem.imageUrl,
+              condition: activeItem.condition,
+            }
+          : undefined
       );
       setConversationId(convId);
       markAsRead(convId, recipient.id);
     }
-  }, [visible, recipient.id, sellerUsername, ctxTitle, ctxPrice, ctxCategory]);
-
-  const currentConv = conversations.find((c) => c.id === conversationId);
-  const messages = currentConv?.messages || [];
+  }, [visible, recipient.id, sellerUsername, itemContext?.id, itemContext?.title, itemContext?.price, itemContext?.imageUrl]);
 
   // When modal is open and incoming messages arrive, mark them as read automatically
   useEffect(() => {
@@ -179,7 +200,16 @@ export default function ChatModal({
         avatarUrl: recipient.avatarUrl || sellerUser?.avatarUrl,
         phone: recipient.phone || sellerUser?.phone,
       }, 
-      ctxTitle ? { title: ctxTitle, price: ctxPrice, category: ctxCategory } : undefined
+      activeItem
+        ? {
+            id: activeItem.id,
+            title: activeItem.title,
+            price: activeItem.price !== undefined ? Number(activeItem.price) : undefined,
+            category: activeItem.category,
+            imageUrl: activeItem.imageUrl,
+            condition: activeItem.condition,
+          }
+        : undefined
     );
 
     const senderId = currentUser?.id || 'u1';
@@ -289,22 +319,22 @@ export default function ChatModal({
             </View>
           </View>
 
-          {/* Context Card: Item / Topic Banner */}
-          {itemContext ? (
-            <View className="bg-emerald-50/90 px-4 py-2.5 border-b border-emerald-100 flex-row items-center justify-between">
+          {/* Top Compact Context Pill */}
+          {activeItem?.title ? (
+            <View className="bg-emerald-50/90 px-4 py-2 border-b border-emerald-100 flex-row items-center justify-between">
               <View className="flex-row items-center flex-1 mr-2">
-                <Tag size={15} color="#059669" />
+                <Tag size={13} color="#059669" />
                 <Text className="text-xs font-bold text-emerald-950 ml-1.5" numberOfLines={1}>
-                  {itemContext.title}
+                  {activeItem.title}
                 </Text>
-                {itemContext.price != null && !isNaN(Number(itemContext.price)) ? (
-                  <Text className="text-xs font-black text-emerald-700 ml-2">
-                    RM {Number(itemContext.price).toFixed(0)}
+                {activeItem.price != null && !isNaN(Number(activeItem.price)) ? (
+                  <Text className="text-xs font-black text-emerald-700 ml-1.5">
+                    RM {Number(activeItem.price).toFixed(0)}
                   </Text>
                 ) : null}
               </View>
               <View className="bg-emerald-200/80 px-2 py-0.5 rounded-full flex-row items-center">
-                <MapPin size={10} color="#065f46" />
+                <MapPin size={9} color="#065f46" />
                 <Text className="text-[10px] font-bold text-emerald-900 ml-1">
                   Radius {displayRadius} km
                 </Text>
@@ -320,6 +350,76 @@ export default function ChatModal({
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
           >
+            {/* Shopee-style Product Inquiry Card (Matching user reference picture) */}
+            {activeItem?.title ? (
+              <View className="bg-white rounded-2xl p-3.5 mb-3.5 border border-slate-200/90 shadow-sm">
+                <Text className="text-xs font-bold text-slate-800 mb-2.5">
+                  Anda sedang bertanyakan tentang barang ini
+                </Text>
+
+                <View className="flex-row items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <Image
+                    source={{
+                      uri: activeItem.imageUrl || 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400'
+                    }}
+                    className="w-16 h-16 rounded-lg bg-slate-200 mr-3"
+                    resizeMode="cover"
+                  />
+                  <View className="flex-1 justify-center">
+                    <Text className="text-xs font-bold text-slate-900 leading-snug" numberOfLines={2}>
+                      {activeItem.title}
+                    </Text>
+
+                    <View className="flex-row items-center mt-1 flex-wrap">
+                      {activeItem.price !== undefined && activeItem.price !== null && !isNaN(Number(activeItem.price)) ? (
+                        <Text className="text-xs font-black text-emerald-600 mr-2">
+                          RM {Number(activeItem.price).toFixed(2)}
+                        </Text>
+                      ) : (
+                        <Text className="text-[11px] font-black text-purple-700 mr-2">
+                          {activeItem.category || 'Barangan Komuniti'}
+                        </Text>
+                      )}
+
+                      {activeItem.condition ? (
+                        <View className="bg-slate-200/90 px-1.5 py-0.5 rounded">
+                          <Text className="text-[9px] font-bold text-slate-600">
+                            {activeItem.condition}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                </View>
+
+                <View className="mt-2.5 pt-2 border-t border-slate-100 flex-row justify-between items-center">
+                  <View className="flex-row items-center">
+                    <Text className="text-[10px] text-slate-400 font-semibold mr-1">ID Barang:</Text>
+                    <Text className="text-[10px] font-bold text-slate-700">{activeItem.id || 'NL-ITEM'}</Text>
+                  </View>
+                  <View className="flex-row items-center">
+                    <Text className="text-[10px] text-slate-400 font-semibold mr-1">Kategori:</Text>
+                    <Text className="text-[10px] font-bold text-slate-700">{activeItem.category || 'Marketplace'}</Text>
+                  </View>
+                </View>
+
+                {messages.length === 0 && (
+                  <View className="items-end mt-2.5 pt-2 border-t border-slate-100">
+                    <TouchableOpacity
+                      onPress={() => handleSend(`Salam, adakah barang '${activeItem.title}' ini masih ada?`)}
+                      className="bg-emerald-50 border border-emerald-300 px-3.5 py-1.5 rounded-full flex-row items-center shadow-xs"
+                      activeOpacity={0.8}
+                    >
+                      <MessageSquare size={12} color="#059669" />
+                      <Text className="text-emerald-800 font-bold text-xs ml-1.5">
+                        Chat with Seller
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ) : null}
+
             <View className="items-center my-2">
               <View className="bg-slate-200/80 px-3 py-1 rounded-full">
                 <Text className="text-[11px] text-slate-600 font-medium">

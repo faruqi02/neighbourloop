@@ -97,9 +97,12 @@ export default function MarketplaceScreen() {
     radiusKm?: number;
   } | null>(null);
   const [activeChatContext, setActiveChatContext] = useState<{ 
+    id?: string;
     title: string; 
     price?: number; 
     category?: string;
+    imageUrl?: string;
+    condition?: string;
     distance?: number;
     radiusKm?: number;
   } | null>(null);
@@ -123,9 +126,12 @@ export default function MarketplaceScreen() {
       radiusKm: seller?.radiusKm || currentUser?.radiusKm || 5,
     };
     const context = {
+      id: selectedListing.id,
       title: selectedListing.title,
       price: selectedListing.price,
-      category: 'Marketplace',
+      category: selectedListing.category || 'Marketplace',
+      imageUrl: selectedListing.imageUrl,
+      condition: selectedListing.condition || 'Terpakai',
       distance: selectedListing.distance,
       radiusKm: seller?.radiusKm || currentUser?.radiusKm || 5,
     };

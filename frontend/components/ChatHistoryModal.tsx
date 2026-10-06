@@ -36,7 +36,7 @@ export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalP
             </View>
             <View>
               <Text className="text-xl font-black text-gray-900">Sejarah Mesej</Text>
-              <Text className="text-xs text-gray-400">Perbualan anda bersama jiran</Text>
+              <Text className="text-xs text-gray-400">Perbualan mengikut urusan barang</Text>
             </View>
           </View>
           <TouchableOpacity onPress={onClose} className="p-2 bg-gray-100 rounded-full">
@@ -58,7 +58,7 @@ export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalP
               </View>
               <Text className="text-base font-bold text-gray-700">Tiada Sejarah Mesej</Text>
               <Text className="text-xs text-gray-400 text-center mt-1 px-8">
-                Mulakan perbualan dengan jiran melalui iklan Marketplace, barang derma, atau bantuan komuniti.
+                Mulakan perbualan melalui iklan Marketplace, barang derma, atau bantuan komuniti.
               </Text>
             </View>
           ) : (
@@ -66,18 +66,35 @@ export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalP
               <TouchableOpacity
                 key={conv.id}
                 onPress={() => setSelectedConversation(conv)}
-                className="bg-white p-4 rounded-2xl mb-3 border border-gray-100 shadow-sm flex-row items-center"
+                className="bg-white p-3.5 rounded-2xl mb-3 border border-gray-100 shadow-sm flex-row items-center"
               >
-                <Image
-                  source={{
-                    uri: conv.participantAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-                  }}
-                  className="w-13 h-13 rounded-full mr-3.5 bg-gray-200 border border-gray-100"
-                  style={{ width: 50, height: 50, borderRadius: 25 }}
-                />
+                <View className="relative mr-3">
+                  <Image
+                    source={{
+                      uri: conv.participantAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+                    }}
+                    style={{ width: 48, height: 48, borderRadius: 24 }}
+                    className="bg-gray-200 border border-gray-100"
+                  />
+                  {conv.itemContextImage ? (
+                    <Image
+                      source={{ uri: conv.itemContextImage }}
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 5,
+                        position: 'absolute',
+                        bottom: -2,
+                        right: -2,
+                        borderWidth: 1.5,
+                        borderColor: '#ffffff',
+                      }}
+                    />
+                  ) : null}
+                </View>
 
                 <View className="flex-1 mr-2">
-                  <View className="flex-row justify-between items-center mb-1">
+                  <View className="flex-row justify-between items-center mb-0.5">
                     <Text className="text-sm font-bold text-gray-900" numberOfLines={1}>
                       {conv.participantName}
                     </Text>
@@ -88,12 +105,14 @@ export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalP
                   </View>
 
                   {conv.itemContextTitle ? (
-                    <View className="flex-row items-center bg-green-50 self-start px-2 py-0.5 rounded-md mb-1.5 border border-green-100">
-                      <Tag size={10} color="#16a34a" />
-                      <Text className="text-[10px] font-bold text-green-800 ml-1" numberOfLines={1}>
+                    <View className="flex-row items-center bg-emerald-50 self-start px-2 py-0.5 rounded-md mb-1 border border-emerald-100 max-w-[95%]">
+                      <Tag size={10} color="#059669" />
+                      <Text className="text-[10px] font-bold text-emerald-800 ml-1" numberOfLines={1}>
                         {conv.itemContextTitle}
                         {conv.itemContextPrice != null && !isNaN(Number(conv.itemContextPrice))
-                          ? ` • RM ${Number(conv.itemContextPrice).toFixed(0)}`
+                          ? Number(conv.itemContextPrice) === 0
+                            ? ' • Percuma'
+                            : ` • RM ${Number(conv.itemContextPrice).toFixed(0)}`
                           : ''}
                       </Text>
                     </View>
@@ -125,9 +144,12 @@ export default function ChatHistoryModal({ visible, onClose }: ChatHistoryModalP
             itemContext={
               selectedConversation.itemContextTitle
                 ? {
+                    id: selectedConversation.itemContextId,
                     title: selectedConversation.itemContextTitle,
                     price: selectedConversation.itemContextPrice != null ? Number(selectedConversation.itemContextPrice) : undefined,
                     category: selectedConversation.itemContextCategory,
+                    imageUrl: selectedConversation.itemContextImage,
+                    condition: selectedConversation.itemContextCondition,
                   }
                 : undefined
             }

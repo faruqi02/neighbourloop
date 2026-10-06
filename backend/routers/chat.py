@@ -74,6 +74,72 @@ def get_cached_messages(force_refresh: bool = False):
     pending = [m for m in _LOCAL_MESSAGES if str(m.get("id")) not in existing_ids]
     return _MESSAGES_CACHE["data"] + pending
 
+def find_item_by_context(ctx: str):
+    if not ctx:
+        return None
+    ctx_clean = str(ctx).strip().lower()
+
+    # 1. Check Marketplace
+    try:
+        from routers.marketplace import MARKET_CACHE, get_listings
+        items = MARKET_CACHE["data"] or get_listings()
+        for item in items:
+            if str(item.id).lower() == ctx_clean or str(item.title).lower() == ctx_clean:
+                return {
+                    "id": item.id,
+                    "title": item.title,
+                    "price": item.price,
+                    "category": item.category,
+                    "imageUrl": item.imageUrl,
+                    "condition": item.condition
+                }
+    except Exception:
+        pass
+
+    # 2. Check Donations
+    try:
+        from routers.recycle import RECYCLE_CACHE, get_recycle_data
+        donations = RECYCLE_CACHE["donations"] or get_recycle_data().donations
+        for item in donations:
+            if str(item.id).lower() == ctx_clean or str(item.title).lower() == ctx_clean:
+                return {
+                    "id": item.id,
+                    "title": item.title,
+                    "price": 0,
+                    "category": item.category,
+                    "imageUrl": item.imageUrl,
+                    "condition": "Percuma"
+                }
+    except Exception:
+        pass
+
+    # 3. Check Help Requests
+    try:
+        from routers.help import HELP_CACHE, get_help_requests
+        helps = HELP_CACHE["data"] or get_help_requests()
+        for item in helps:
+            if str(item.id).lower() == ctx_clean or str(item.title).lower() == ctx_clean:
+                return {
+                    "id": item.id,
+                    "title": item.title,
+                    "price": None,
+                    "category": item.category,
+                    "imageUrl": item.imageUrl or "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=400",
+                    "condition": item.type
+                }
+    except Exception:
+        pass
+
+    # Fallback with title
+    return {
+        "id": ctx,
+        "title": ctx,
+        "price": None,
+        "category": "Barangan",
+        "imageUrl": "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400",
+        "condition": "Terpakai"
+    }
+
 @router.get("/conversations/{user_id}")
 def get_conversations(user_id: str):
     messages = get_cached_messages()
@@ -83,25 +149,33 @@ def get_conversations(user_id: str):
     # Filter messages involving this user
     user_msgs = [m for m in messages if m.get("user1_id") == user_id or m.get("user2_id") == user_id]
     
-    # Group by conversation (the OTHER user id)
+    # Group by conversation (the OTHER user id + item context, ensuring 1 chat per item)
     convos = {}
     for m in user_msgs:
         other_user_id = m.get("user2_id") if m.get("user1_id") == user_id else m.get("user1_id")
         if not other_user_id:
             continue
             
-        if other_user_id not in convos:
+        ctx = str(m.get("context_id") or "").strip()
+        conv_key = f"conv_{other_user_id}_{ctx}" if ctx else f"conv_{other_user_id}"
+            
+        if conv_key not in convos:
             other_user = users_dict.get(other_user_id, {})
             p_name = f"@{other_user.get('username')}" if other_user.get('username') else other_user.get("name", "Unknown")
-            convos[other_user_id] = {
-                "id": f"conv_{other_user_id}",
+            item_info = find_item_by_context(ctx) if ctx else None
+            
+            convos[conv_key] = {
+                "id": conv_key,
                 "participantId": other_user_id,
                 "participantName": p_name,
                 "participantAvatar": other_user.get("avatarUrl", "https://ui-avatars.com/api/?name=Unknown"),
                 "participantPhone": other_user.get("phone", ""),
-                "itemContextTitle": m.get("context_id", ""),
-                "itemContextPrice": None,
-                "itemContextCategory": "",
+                "itemContextId": item_info["id"] if item_info else (ctx or None),
+                "itemContextTitle": item_info["title"] if item_info else (ctx or ""),
+                "itemContextPrice": item_info["price"] if item_info else None,
+                "itemContextCategory": item_info["category"] if item_info else "",
+                "itemContextImage": item_info["imageUrl"] if item_info else None,
+                "itemContextCondition": item_info["condition"] if item_info else None,
                 "messages": [],
                 "unreadCount": 0
             }
@@ -112,11 +186,11 @@ def get_conversations(user_id: str):
         
         is_read_val = (m.get("is_read") is True or str(m.get("is_read")).strip().upper() == "TRUE")
         if not is_me and not is_read_val:
-            convos[other_user_id]["unreadCount"] += 1
+            convos[conv_key]["unreadCount"] += 1
 
-        convos[other_user_id]["messages"].append({
+        convos[conv_key]["messages"].append({
             "id": str(m.get("id")),
-            "conversationId": f"conv_{other_user_id}",
+            "conversationId": conv_key,
             "senderId": m.get("sender_id"),
             "senderName": s_name,
             "text": m.get("message"),
@@ -175,6 +249,7 @@ def send_message(req: SendMessageRequest, background_tasks: BackgroundTasks):
 class MarkReadRequest(BaseModel):
     user_id: str
     other_user_id: str
+    context_id: Optional[str] = None
 
 def sync_mark_read_to_sheets(message_ids: List[str]):
     for mid in message_ids:
@@ -198,6 +273,12 @@ def mark_read(req: MarkReadRequest, background_tasks: BackgroundTasks):
         sender = str(m.get("sender_id", ""))
         is_convo = (u1 == req.other_user_id and u2 == req.user_id) or (u1 == req.user_id and u2 == req.other_user_id)
         
+        if req.context_id:
+            m_ctx = str(m.get("context_id", "")).strip().lower()
+            req_ctx = req.context_id.strip().lower()
+            if m_ctx != req_ctx:
+                is_convo = False
+
         # If it's a message from the other user and not yet read
         if is_convo and sender != req.user_id:
             current_read = (m.get("is_read") is True or str(m.get("is_read")).strip().upper() == "TRUE")

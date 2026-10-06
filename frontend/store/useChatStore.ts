@@ -12,7 +12,14 @@ interface ChatState {
   fetchConversations: (silent?: boolean) => Promise<void>;
   getOrCreateConversation: (
     participant: { id: string; name: string; avatarUrl?: string; phone?: string },
-    itemContext?: { title: string; price?: number; category?: string }
+    itemContext?: {
+      id?: string;
+      title: string;
+      price?: number;
+      category?: string;
+      imageUrl?: string;
+      condition?: string;
+    }
   ) => string;
   sendMessage: (conversationId: string, text: string, senderId: string, senderName: string) => Promise<void>;
   markAsRead: (conversationId: string, otherUserId?: string) => void;
@@ -81,27 +88,70 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  getOrCreateConversation: (participant, itemContext) => {
+  getOrCreateConversation: (
+    participant: { id: string; name: string; avatarUrl?: string; phone?: string },
+    itemContext?: {
+      id?: string;
+      title: string;
+      price?: number;
+      category?: string;
+      imageUrl?: string;
+      condition?: string;
+    }
+  ) => {
     const state = get();
-    // Check if conversation with this participant already exists
-    const existingId = `conv_${participant.id}`;
-    const existing = state.conversations.find((c) => c.id === existingId);
-    
+    // Unique key per item: prefer itemContext.id, fallback to itemContext.title, or none
+    const itemKey = itemContext?.id || itemContext?.title?.trim() || '';
+    const targetId = itemKey ? `conv_${participant.id}_${itemKey}` : `conv_${participant.id}`;
+
+    // 1. Check if conversation with this exact targetId already exists
+    let existing = state.conversations.find((c) => c.id === targetId);
+
+    // 2. Also check if a conversation with same participant and matching itemContext exists
+    if (!existing && itemKey) {
+      existing = state.conversations.find((c) => 
+        c.participantId === participant.id && 
+        ((c.itemContextId && c.itemContextId === itemKey) || 
+         (c.itemContextTitle && c.itemContextTitle.toLowerCase() === itemKey.toLowerCase()))
+      );
+    }
+
     if (existing) {
+      // Update itemContext details if they were missing or richer now
+      if (itemContext && (!existing.itemContextImage || existing.itemContextPrice === undefined)) {
+        set((s) => ({
+          conversations: s.conversations.map((c) => 
+            c.id === existing!.id 
+              ? { 
+                  ...c, 
+                  itemContextId: itemContext.id || c.itemContextId,
+                  itemContextTitle: itemContext.title || c.itemContextTitle,
+                  itemContextPrice: itemContext.price !== undefined ? itemContext.price : c.itemContextPrice,
+                  itemContextCategory: itemContext.category || c.itemContextCategory,
+                  itemContextImage: itemContext.imageUrl || c.itemContextImage,
+                  itemContextCondition: itemContext.condition || c.itemContextCondition,
+                }
+              : c
+          )
+        }));
+      }
       return existing.id;
     }
 
     // Create local dummy new conversation until first message is sent
-    const newId = existingId;
+    const newId = targetId;
     const newConversation: ChatConversation = {
       id: newId,
       participantId: participant.id,
       participantName: participant.name,
       participantAvatar: participant.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
       participantPhone: participant.phone || '',
+      itemContextId: itemContext?.id,
       itemContextTitle: itemContext?.title,
       itemContextPrice: itemContext?.price,
       itemContextCategory: itemContext?.category,
+      itemContextImage: itemContext?.imageUrl,
+      itemContextCondition: itemContext?.condition,
       lastMessage: 'Mula perbualan...',
       lastMessageTime: '',
       unreadCount: 0,
@@ -120,7 +170,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (!conv) return;
 
     const participantId = conv.participantId;
-    const itemContext = conv.itemContextTitle || '';
+    const itemContext = conv.itemContextId || conv.itemContextTitle || '';
 
     // Optimistic UI update
     const tempId = `msg_temp_${Date.now()}`;
@@ -171,6 +221,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const currentUser = useUserStore.getState().currentUser;
     const conv = get().conversations.find((c) => c.id === conversationId);
     const targetOtherUserId = otherUserId || conv?.participantId;
+    const targetContextId = conv?.itemContextId || conv?.itemContextTitle;
 
     // Immediately mark locally as read
     set((state) => ({
@@ -194,6 +245,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         body: JSON.stringify({
           user_id: currentUser.id,
           other_user_id: targetOtherUserId,
+          context_id: targetContextId,
         }),
       }).catch((e) => console.log('markAsRead sync error:', e));
     }

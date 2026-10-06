@@ -115,7 +115,15 @@ export default function RecycleScreen() {
 
   // Chat with Donor Modal
   const [chatModalVisible, setChatModalVisible] = useState(false);
-  const [chatRecipient, setChatRecipient] = useState<{ id: string; name: string; phone?: string; title: string }>({
+  const [chatRecipient, setChatRecipient] = useState<{
+    id: string;
+    name: string;
+    phone?: string;
+    title: string;
+    itemId?: string;
+    imageUrl?: string;
+    condition?: string;
+  }>({
     id: '',
     name: '',
     title: '',
@@ -581,6 +589,9 @@ export default function RecycleScreen() {
                               name: item.donorName,
                               phone: item.donorPhone,
                               title: item.title,
+                              itemId: item.id,
+                              imageUrl: item.imageUrl,
+                              condition: 'Percuma / Derma',
                             });
                             setChatModalVisible(true);
                           }}
@@ -800,8 +811,12 @@ export default function RecycleScreen() {
           phone: chatRecipient.phone,
         }}
         itemContext={{
+          id: chatRecipient.itemId,
           title: chatRecipient.title,
           category: 'Barang Derma',
+          imageUrl: chatRecipient.imageUrl,
+          condition: chatRecipient.condition || 'Percuma',
+          price: 0,
         }}
       />
     </SafeAreaView>

@@ -14,5 +14,3 @@ passlib>=1.7.4
 # Utilities & Middleware
 python-dotenv>=1.0.0
 python-multipart>=0.0.9
-qrcode[pil]>=8.0
-pillow>=10.0.0
